@@ -1,7 +1,11 @@
 /*
   Ardumower (www.ardumower.de)
-  Copyright (c) 2013-2014 by Alexander Grau
-  Copyright (c) 2013-2014 by Sven Gennat
+  Copyright (c) 2013-2015 by Alexander Grau
+  Copyright (c) 2013-2015 by Sven Gennat
+  Copyright (c) 2014 by Maxime Carpentieri    
+  Copyright (c) 2014-2015 by Stefan Manteuffel
+  Copyright (c) 2015 by Uwe Zimprich
+  Copyright (c) 2016-2017 by Reiner Ehlers
   
   Private-use only! (you need to ask for a commercial-use)
  
@@ -20,6 +24,7 @@
   
   Private-use only! (you need to ask for a commercial-use)
 */
+
 /*
 Problem: you have multiple analog inputs, some need only to be sampled once, other need
 a fixed sample rate. 
@@ -49,12 +54,11 @@ How to use it (example):
 #ifndef ADCMAN_H
 #define ADCMAN_H
 
-
 #include <Arduino.h>
 
-
 // sample rates
-enum {
+enum 
+{
   SRATE_9615,
   SRATE_19231,
   SRATE_38462  
@@ -74,13 +78,13 @@ class ADCManager
     // samplecount > 1: 8 bit sampling (signed - zero = VCC/2)    
     void setCapture(byte pin, byte samplecount, boolean autoCalibrateOfs);    
     // get buffer with samples for pin
-    int8_t* getCapture(byte pin);        
+    int16_t* getCapture(byte pin);        
     // restart sampling for pin
     void restart(byte pin);    
     // samplecount=1: get one sample for pin
     // samplecount>1: get first sample for pin
     int read(byte pin);
-	// read the median value of samples
+	  // read the median value of samples
     int readMedian(byte pin);
     boolean isCaptureComplete(byte pin);
     // statistics only
@@ -109,7 +113,7 @@ class ADCManager
 };
 
 extern ADCManager ADCMan;
-
+void ReadADC();
 
 #endif
 

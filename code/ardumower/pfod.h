@@ -1,8 +1,12 @@
 /*
   Ardumower (www.ardumower.de)
-  Copyright (c) 2013-2014 by Alexander Grau
-  Copyright (c) 2013-2014 by Sven Gennat
-  
+  Copyright (c) 2013-2015 by Alexander Grau
+  Copyright (c) 2013-2015 by Sven Gennat
+  Copyright (c) 2014 by Maxime Carpentieri    
+  Copyright (c) 2014-2015 by Stefan Manteuffel
+  Copyright (c) 2015 by Uwe Zimprich
+  Copyright (c) 2016-2017 by Reiner Ehlers
+    
   Private-use only! (you need to ask for a commercial-use)
  
   This program is free software: you can redistribute it and/or modify
@@ -42,6 +46,7 @@
 #include "pid.h"
 #include "perimeter.h"
 
+
 // pfodApp state
 enum { PFOD_OFF, PFOD_MENU, PFOD_LOG_SENSORS, 
        PFOD_PLOT_BAT, PFOD_PLOT_ODO2D, PFOD_PLOT_IMU, PFOD_PLOT_SENSOR_COUNTERS, 
@@ -55,11 +60,11 @@ class RemoteControl
   public:
     RemoteControl();
     void setRobot(Robot *aRobot);
-    void initSerial(HardwareSerial* serialPort, uint32_t baudrate);
+    void initSerial(uint32_t baudrate);
     bool readSerial();
-    void run();    
+    void run();  
+    //int16_t z;  
   private:
-    HardwareSerial* serialPort;
     Robot *robot;    
     boolean pfodCmdComplete;
     String pfodCmd;
@@ -79,14 +84,14 @@ class RemoteControl
     void processPIDSlider(String result, String cmd, PID &pid, double scale, float maxvalue);
     
     // generic slider
-    void sendSlider(String cmd, String title, float value, String unit, double scale, float maxvalue, float minvalue = 0);    
-    void processSlider(String result, float &value, double scale);
-    void processSlider(String result, long &value, double scale);
-    void processSlider(String result, int &value, double scale);
-    void processSlider(String result, byte &value, double scale);
-    void processSlider(String result, short &value, double scale);
-
-
+    void sendSlider(String cmd, String title, float value, String unit, double scale, float maxvalue, float minvalue = 0);        
+    void processSlider_float(String result, float &value, double scale);
+    void processSlider_long(String result, long &value, double scale);
+    void processSlider_byte(String result, byte &value, double scale);
+    void processSlider_short(String result, short &value, double scale);
+    void processSlider_int(String result, int &value, double scale);
+    void processSlider_int16(String result, int16_t &value, double scale);
+    
     // send timer menu details
     void sendTimer(ttimer_t timer);
 
@@ -143,7 +148,7 @@ class RemoteControl
     void processDateTimeMenu(String pfodCmd);
     void processFactorySettingsMenu(String pfodCmd); 
     void processInfoMenu(String pfodCmd);
-
+    
     // timer
     void sendTimerDetailMenu(int timerIdx, boolean update);
     void processTimerDetailMenu(String pfodCmd);    

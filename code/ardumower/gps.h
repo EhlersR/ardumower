@@ -1,7 +1,11 @@
 /*
   Ardumower (www.ardumower.de)
-  Copyright (c) 2013-2014 by Alexander Grau
-  Copyright (c) 2013-2014 by Sven Gennat
+  Copyright (c) 2013-2015 by Alexander Grau
+  Copyright (c) 2013-2015 by Sven Gennat
+  Copyright (c) 2014 by Maxime Carpentieri    
+  Copyright (c) 2014-2015 by Stefan Manteuffel
+  Copyright (c) 2015 by Uwe Zimprich
+  Copyright (c) 2016-2017 by Reiner Ehlers
   
   Private-use only! (you need to ask for a commercial-use)
  
@@ -19,7 +23,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
   
   Private-use only! (you need to ask for a commercial-use)
-
 */
 
 //  GPS neo6m  (NMEA-0183 protocol)

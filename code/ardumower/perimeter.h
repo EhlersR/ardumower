@@ -1,7 +1,11 @@
 /*
   Ardumower (www.ardumower.de)
-  Copyright (c) 2013-2014 by Alexander Grau
-  Copyright (c) 2013-2014 by Sven Gennat
+  Copyright (c) 2013-2015 by Alexander Grau
+  Copyright (c) 2013-2015 by Sven Gennat
+  Copyright (c) 2014 by Maxime Carpentieri    
+  Copyright (c) 2014-2015 by Stefan Manteuffel
+  Copyright (c) 2015 by Uwe Zimprich
+  Copyright (c) 2016-2017 by Reiner Ehlers
   
   Private-use only! (you need to ask for a commercial-use)
  
@@ -79,8 +83,8 @@ class Perimeter
     int signalCounter[2];    
     int8_t rawSignalSample[2][RAW_SIGNAL_SAMPLE_SIZE];
     void matchedFilter(byte idx);
-    int16_t corrFilter(int8_t *H, int8_t subsample, int16_t M, int8_t *ip, int16_t nPts, float &quality);
-    void printADCMinMax(int8_t *samples);
+    int16_t corrFilter(int8_t *H, int8_t subsample, int16_t M, int16_t *ip, int16_t nPts, float &quality);
+    void printADCMinMax(int16_t *samples);
 };
 
 

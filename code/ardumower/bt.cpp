@@ -1,7 +1,11 @@
 /*
   Ardumower (www.ardumower.de)
-  Copyright (c) 2013-2014 by Alexander Grau
-  Copyright (c) 2013-2014 by Sven Gennat
+  Copyright (c) 2013-2015 by Alexander Grau
+  Copyright (c) 2013-2015 by Sven Gennat
+  Copyright (c) 2014 by Maxime Carpentieri    
+  Copyright (c) 2014-2015 by Stefan Manteuffel
+  Copyright (c) 2015 by Uwe Zimprich
+  Copyright (c) 2016-2017 by Reiner Ehlers
   
   Private-use only! (you need to ask for a commercial-use)
  
@@ -38,35 +42,39 @@ void BluetoothConfig::setConfigs(byte *config){
   }
 }
 
-BluetoothConfig::BluetoothConfig(){
+BluetoothConfig::BluetoothConfig()
+{
   btType = BT_UNKNOWN;
   btRate = 9600;    
-#ifdef __AVR__
   byte configs[24] =  { SERIAL_8N1, SERIAL_5N1, SERIAL_6N1, SERIAL_7N1, 
-                    SERIAL_5N2, SERIAL_6N2, SERIAL_7N2, SERIAL_8N2,
-                    SERIAL_5E1, SERIAL_6E1, SERIAL_7E1, SERIAL_8E1,  
-                    SERIAL_5E2, SERIAL_6E2, SERIAL_7E2, SERIAL_8E2,
-                    SERIAL_5O1, SERIAL_6O1, SERIAL_7O1, SERIAL_8O1,
-                    SERIAL_5O2, SERIAL_6O2, SERIAL_7O2, SERIAL_8O2 };               
+                        SERIAL_5N2, SERIAL_6N2, SERIAL_7N2, SERIAL_8N2,
+                        SERIAL_5E1, SERIAL_6E1, SERIAL_7E1, SERIAL_8E1,  
+                        SERIAL_5E2, SERIAL_6E2, SERIAL_7E2, SERIAL_8E2,
+                        SERIAL_5O1, SERIAL_6O1, SERIAL_7O1, SERIAL_8O1,
+                        SERIAL_5O2, SERIAL_6O2, SERIAL_7O2, SERIAL_8O2 };               
   setConfigs(configs);
   btConfig = SERIAL_8N1;                                                
-#else
   btTestConfig[1] = { 0 }; 
   btConfig = 0;  
-#endif                            
 }
 
-void BluetoothConfig::writeBT(String s){
-  Console.print("send: "+s);
-  Bluetooth.print(s);
+void BluetoothConfig::writeBT(String s)
+{
+  //Console.print("send: "+s);
+  Console.print("send: ");
+  Console.print(s);
+  Serial1.print(s);
 }
 
-void BluetoothConfig::readBT(){
+void BluetoothConfig::readBT()
+{
   btResult = "";
-  if (Bluetooth.available()){
+  if (Serial1.available())
+  {
     Console.print(F("  received: "));
-    while (Bluetooth.available()){
-      btData=Bluetooth.read();
+    while (Serial1.available())
+    {
+      btData=Serial1.read();
       btResult += char(btData);
       Console.print(btData);
     }    
@@ -75,12 +83,14 @@ void BluetoothConfig::readBT(){
   //Console.println(btResult);
 }
 
-void BluetoothConfig::writeReadBT(String s){
+void BluetoothConfig::writeReadBT(String s)
+{
   writeBT(s);
   delay(2000);
   readBT();    
   int counter = 0;
-  while ((btResult.startsWith("ERROR") && counter < 4)){
+  while ((btResult.startsWith("ERROR") && counter < 4))
+  {
     // retry 
     writeBT(s);
     delay(2000);    
@@ -97,7 +107,8 @@ void BluetoothConfig::setName(String name){
   Console.print(F("setting name "));
   Console.print(name);
   Console.println("...");
-  switch (btType){
+  switch (btType)
+  {
     case BT_LINVOR_HC06:
       writeReadBT("AT+NAME"+name);     
       res = btResult.startsWith("OKsetname");
@@ -116,7 +127,8 @@ void BluetoothConfig::setName(String name){
 }
 
 
-void BluetoothConfig::setPin(int pin){
+void BluetoothConfig::setPin(int pin)
+{
   boolean res = false;
   Console.println();
   Console.print(F("setting pin "));
@@ -141,16 +153,19 @@ void BluetoothConfig::setPin(int pin){
 }
 
 
-void BluetoothConfig::setBaudrate(long rate){    
+void BluetoothConfig::setBaudrate(long rate)
+{    
   Console.println();
   Console.print(F("setting baudrate "));
   Console.print(rate);
   Console.println(F("..."));
   byte n=4;
   boolean res = false;
-  switch (btType){
+  switch (btType)
+  {
     case BT_LINVOR_HC06:
-      switch (rate){
+      switch (rate)
+      {
         case 1200: n=1; break;
         case 2400: n=2; break;
         case 4800: n=3; break;
@@ -169,7 +184,8 @@ void BluetoothConfig::setBaudrate(long rate){
       res = (btResult.indexOf("OK") != -1);          
       break;
     case BT_FBT06_MBTV4:
-      switch (rate){
+      switch (rate)
+      {
         case 1200: n=1; break;
         case 2400: n=2; break;
         case 4800: n=3; break;
@@ -183,19 +199,25 @@ void BluetoothConfig::setBaudrate(long rate){
       res = (btResult.indexOf("OK") != -1);
       break;
   }  
-  if (res){
+  if (res)
+  {
     btRate = rate;
     Console.println(F("=>success"));
-  } else {
+  }
+  else
+  {
     Console.println(F("=>error setting baudrate"));
   } 
 }  
 
-boolean BluetoothConfig::detectBaudrate(boolean quickBaudScan){
+boolean BluetoothConfig::detectBaudrate(boolean quickBaudScan)
+{
   Console.println();
   Console.println(F("detecting baudrate..."));
-  for (int i=0; i < 8; i++){    
-    switch(i){
+  for (int i=0; i < 8; i++)
+  {    
+    switch(i)
+    {
       case 0: btRate = 9600; break;
       case 1: btRate = 38400; break;      
       case 2: btRate = 19200; break;      
@@ -205,25 +227,25 @@ boolean BluetoothConfig::detectBaudrate(boolean quickBaudScan){
       case 6: btRate = 2400; break;      
       case 7: btRate = 1200; break;            
     }      
-    for (int j=0; j < sizeof btTestConfig; j++){
+    for (int j=0; j < sizeof btTestConfig; j++)
+    {
       btConfig = btTestConfig[j];
       Console.print(F("trying baudrate "));
       Console.print(btRate);
       Console.print(F(" config "));
       Console.print(j);
       Console.println(F("..."));
-      #ifdef __AVR__
-        Bluetooth.begin(btRate, btConfig);
-      #else
-        Bluetooth.begin(btRate);      
-      #endif
+      Serial1.begin(btRate, btConfig);
+      //Serial1.begin(btRate);      
       writeReadBT("AT");  // linvor/HC06 does not want a terminator!    
-      if (btResult.startsWith("OK")){
+      if (btResult.startsWith("OK"))
+      {
         Console.println(F("=>success"));
         return true;
       }
       writeReadBT("AT\r\n");  // HC05 wants a terminator!          
-      if (btResult.startsWith("OK")){
+      if (btResult.startsWith("OK"))
+      {
         Console.println(F("=>success"));
         return true;
       }      
@@ -237,37 +259,44 @@ boolean BluetoothConfig::detectBaudrate(boolean quickBaudScan){
   return false;
 }
 
-void BluetoothConfig::detectModuleType(){
+void BluetoothConfig::detectModuleType()
+{
   Console.println();
   Console.println(F("detecting BT type..."));
   writeReadBT("AT+VERSION");  
-  if (btResult.startsWith("OKlinvor")){
+  if (btResult.startsWith("OKlinvor"))
+  {
     Console.println(F("=>it's a linvor/HC06"));
     btType = BT_LINVOR_HC06;
     return;
   }     
   writeReadBT("AT+VERSION?\r\n");  
-  if (btResult.indexOf("OK") != -1){
+  if (btResult.indexOf("OK") != -1)
+  {
     Console.println(F("=>must be a HC03/04/05 ?"));      
     btType = BT_HC05;
   }  
   writeReadBT("AT+VERSION\r\n");
-  if (btResult.indexOf("ModiaTek") != -1){
+  if (btResult.indexOf("ModiaTek") != -1)
+  {
     Console.println(F("=>it's a FBT06/MBTV4"));
     btType = BT_FBT06_MBTV4;
   }
 }
 
-void BluetoothConfig::setParams(String name, int pin, long baudrate, boolean quickBaudScan) {
+void BluetoothConfig::setParams(String name, int pin, long baudrate, boolean quickBaudScan)
+{
   //delay(2000);
   Console.println(F("HC-03/04/05/06/linvor/ModiaTek Bluetooth config programmer"));
   Console.println(F("NOTE for HC05: Connect KEY pin to 3.3V!"));
   Console.println(F("NOTE for HC06/linvor: Do NOT pair/connect (LED must be blinking)"));
   Console.println(F("NOTE for FBT06/MBTV4: First you have to solder the PIO11 pin to VCC (PIN 12) which is 3.3 Volts using a thin wire."));
  
-  if (detectBaudrate(quickBaudScan)){
+  if (detectBaudrate(quickBaudScan))
+  {
     detectModuleType();
-    if (btType != BT_UNKNOWN){      
+    if (btType != BT_UNKNOWN)
+    {      
       setName(name);
       setPin(pin);
       setBaudrate(baudrate);

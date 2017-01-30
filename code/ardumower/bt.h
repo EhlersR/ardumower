@@ -1,8 +1,12 @@
 /*
   Ardumower (www.ardumower.de)
-  Copyright (c) 2013-2014 by Alexander Grau
-  Copyright (c) 2013-2014 by Sven Gennat
- 
+  Copyright (c) 2013-2015 by Alexander Grau
+  Copyright (c) 2013-2015 by Sven Gennat
+  Copyright (c) 2014 by Maxime Carpentieri    
+  Copyright (c) 2014-2015 by Stefan Manteuffel
+  Copyright (c) 2015 by Uwe Zimprich
+  Copyright (c) 2016-2017 by Reiner Ehlers
+   
   Private-use only! (you need to ask for a commercial-use)
   
   This program is free software: you can redistribute it and/or modify
@@ -44,6 +48,7 @@ class BluetoothConfig
   public:
     BluetoothConfig();
     void setParams(String name, int pin, long baudrate, boolean quickBaudScan);
+    //void setParams(int pin, long baudrate, boolean quickBaudScan);
   private:
     void setConfigs(byte *config);
     void writeBT(String s);

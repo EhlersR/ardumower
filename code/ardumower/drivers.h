@@ -1,9 +1,12 @@
 /*
   Ardumower (www.ardumower.de)
-  Copyright (c) 2013-2014 by Alexander Grau
-  Copyright (c) 2013-2014 by Sven Gennat
-  Copyright (c) 2014 by Maxime Carpentieri
-  
+  Copyright (c) 2013-2015 by Alexander Grau
+  Copyright (c) 2013-2015 by Sven Gennat
+  Copyright (c) 2014 by Maxime Carpentieri    
+  Copyright (c) 2014-2015 by Stefan Manteuffel
+  Copyright (c) 2015 by Uwe Zimprich
+  Copyright (c) 2016-2017 by Reiner Ehlers
+    
   Private-use only! (you need to ask for a commercial-use)
  
   This program is free software: you can redistribute it and/or modify
@@ -29,20 +32,10 @@
 #define DRIVERS_H
 
 #include <Arduino.h>
-#ifdef __AVR__
-  // Arduino Mega
-  #include <EEPROM.h>  
-  #define Console Serial
-  #define ESP8266port Serial1
-  #define Bluetooth Serial2
-#else 
-  // Arduino Due
-  #include "due.h"
-   // Due has two serial ports: Native (SerialUSB) and Programming (Serial) - we want to use 'SerialUSB' for 'Console'
-  #define Console SerialUSB
-  #define ESP8266port Serial1
-  #define Bluetooth Serial2
-#endif
+#include <EEPROM.h>  
+#define Console SerialASC
+#define ESP8266port Serial0
+#define Bluetooth Serial1
 
 
 // ultrasonic sensor max echo time (WARNING: do not set too high, it consumes CPU time!)
@@ -52,21 +45,22 @@
 
 // I2C addresses
 #define STEPPER_ADDRESS 0xBB
-#define DS1307_ADDRESS B1101000
-
+#define DS1307_ADDRESS 104
 
 // ---------- date time --------------------------------------
 
 extern char *dayOfWeek[];
 
-struct timehm_t {
+struct timehm_t
+{
   byte hour;
   byte minute;  
 };
 
 typedef struct timehm_t timehm_t;
 
-struct date_t {
+struct date_t 
+{
   byte dayOfWeek;
   byte day;
   byte month;
@@ -75,7 +69,8 @@ struct date_t {
 
 typedef struct date_t date_t;
 
-struct datetime_t {
+struct datetime_t
+{
   timehm_t time;
   date_t date;
 };
