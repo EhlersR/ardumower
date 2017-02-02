@@ -362,7 +362,7 @@ void Mower::setup()
   // left wheel motor
   Console.print(".");
   pinMode(pinMotorEnable, OUTPUT);  
-  digitalWrite(pinMotorEnable, HIGH);   //*
+  //digitalWrite(pinMotorEnable, HIGH);   //*
   pinMode(pinMotorLeftPWM, OUTPUT);
   pinMode(pinMotorLeftDir, OUTPUT);   
   pinMode(pinMotorLeftSense, INPUT);     
@@ -451,6 +451,7 @@ void Mower::setup()
   // other
   pinMode(pinVoltageMeasurement, INPUT);
 
+
   // PWM frequency setup  
   // For obstacle detection, motor torque should be detectable - torque can be computed by motor current.
   // To get consistent current values, PWM frequency should be 3.9 Khz
@@ -489,6 +490,11 @@ void Mower::setup()
   //gps.init();
 
   Robot::setup();  
+
+  //Necessary to prevent motor-start on at start-up or reset
+  delay(1000);
+  digitalWrite(pinMotorEnable, HIGH);
+  
 
 //TODO:Shiedlbuddy
   if (esp8266Use)

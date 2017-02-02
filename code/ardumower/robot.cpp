@@ -1374,6 +1374,7 @@ void Robot::setup()
 {     
   setDefaultTime();
   setMotorPWM(0, 0, false);
+    
   loadSaveErrorCounters(true);
   loadUserSettings();
   if (!statsOverride)
@@ -1389,7 +1390,7 @@ void Robot::setup()
     
   stateStartTime = millis(); 
   
-  MyBeep(500);
+  MyBeep(500, 2000);
     
   Console.println(F("START"));  
   Console.print(F("Ardumower "));
@@ -2080,7 +2081,7 @@ void Robot::checkButton()
     {
       Console.println(F("buttonPressed"));
       // ON/OFF button pressed                                                
-      MyBeep(300);
+      MyBeep(300, 2000);
       buttonCounter++;
       resetIdleTime();
     } 
@@ -2687,11 +2688,11 @@ void Robot::checkBattery()
 	nextTimeCheckBattery = millis() + 1000;  
   if (batMonitor)
   {
-    if ((batVoltage < batSwitchOffIfBelow) && (stateCurr !=STATE_ERROR) && (stateCurr !=STATE_OFF) && (stateCurr !=STATE_STATION) && (stateCurr !=STATE_STATION_CHARGING)) 
+    if ((batVoltage < batSwitchOffIfBelow) && (stateCurr != STATE_ERROR) && (stateCurr != STATE_OFF) && (stateCurr != STATE_STATION) && (stateCurr != STATE_STATION_CHARGING)) 
     {
       Console.println(F("triggered batSwitchOffIfBelow"));
       addErrorCounter(ERR_BATTERY);
-      MyBeep(300);      
+      MyBeep(300, 2000);      
       setNextState(STATE_OFF, 0);
     }
     else if ((batVoltage < batGoHomeIfBelow) && (stateCurr != STATE_OFF) 
@@ -2701,7 +2702,7 @@ void Robot::checkBattery()
      && (perimeterUse))
     {                                                                                   //UNTESTED please verify
       Console.println(F("triggered batGoHomeIfBelow"));
-      MyBeep(300);      
+      MyBeep(300, 2000);      
       setNextState(STATE_PERI_FIND, 0);
     }
   }
@@ -2715,7 +2716,7 @@ void Robot::checkBattery()
       if (idleTimeSec > batSwitchOffIfIdle * 60)
       {        
         Console.println(F("triggered batSwitchOffIfIdle"));      
-        MyBeep(300);      
+        MyBeep(300, 2000);      
         loadSaveErrorCounters(false);                                                    // saves error counters
         loadSaveRobotStats(false);                                                       // saves robot stats
         idleTimeSec = BATTERY_SW_OFF;                                                    // flag to remember that battery is switched off
@@ -3506,7 +3507,7 @@ void Robot::loop()
       {
         if ((chgVoltage > 5.0)  && (batVoltage > 8))
         {
-          MyBeep(500);      
+          MyBeep(500, 2000);      
           setNextState(STATE_STATION, 0);
         }
       }

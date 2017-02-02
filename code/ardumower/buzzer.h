@@ -30,7 +30,7 @@
 #define BUZZER_H
 
 void Beep_begin();
-void MyBeep(uint16_t duration);
+void MyBeep(uint16_t duration, float frequency);
 
 
 #endif

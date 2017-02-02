@@ -36,11 +36,11 @@ volatile boolean tone_pin_state = false;
 volatile uint16_t dura = 0;
 volatile bool BeepOn;
 volatile long millisStart;
-
+uint8_t count;
 
 // ISR for Beep (Toggles pinBuzzer at 1kHz if BeepOn)
 void IntBeep(void)
-{
+{ 
   if (BeepOn)
   {
     digitalWrite(pinBuzzer, tone_pin_state = !tone_pin_state); 
@@ -49,7 +49,6 @@ void IntBeep(void)
   }
   else
   {
-    //Console.println("Beep OFF");
     BeepOn = false;
     digitalWrite(pinBuzzer, LOW);
   }
@@ -59,16 +58,20 @@ void Beep_begin()
 { 
   pinMode(pinBuzzer, OUTPUT);                
   digitalWrite(pinBuzzer, LOW);
-   
-  // Timer Interrupt for Beep
-  CreateTimerInterrupt0_Core1(ContinuousTimerInterrupt, 50000, IntBeep); 
   return;
 } 
 
-void MyBeep(uint16_t duration)
+void MyBeep(uint16_t duration, float frequency)
 {
+  float interval;
+  
   dura = duration;
   millisStart = millis();
+
+  //Calculate Timer Interval
+  interval = 1 / frequency *  50000000.0;
+  
+  CreateTimerInterrupt0_Core1(ContinuousTimerInterrupt, uint16_t(interval), IntBeep); 
   BeepOn = true;  
   return;
 }
