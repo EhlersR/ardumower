@@ -230,7 +230,7 @@ void setL9958(int pinDir, int pinPWM, int speed)
 
 // MC33926 motor driver
 // Check http://forum.pololu.com/viewtopic.php?f=15&t=5272#p25031 for explanations.
-//(8-bit PWM=255, 10-bit PWM=1023)
+// (8-bit PWM=255, 10-bit PWM=1023)
 // IN1 PinPWM         IN2 PinDir
 // PWM                L     Forward
 // nPWM               H     Reverse

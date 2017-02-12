@@ -115,7 +115,7 @@
 // GPS: Serial3 (TX3, RX3) 
 
 // ------- baudrates---------------------------------
-#define CONSOLE_BAUDRATE    19200        // baudrate used for console
+#define CONSOLE_BAUDRATE    57600        // baudrate used for console
 #define BLUETOOTH_BAUDRATE  19200        // baudrate used for communication with Bluetooth module
 #define ESP8266_BAUDRATE    115200       // baudrate used for communication with esp8266 Wifi module
 #define BLUETOOTH_PIN       1234
@@ -135,7 +135,7 @@ Mower::Mower()
   motorSenseRightScale      = 1.53;      // motor right sense scale (mA=(ADC-zero)/scale)
   motorSenseLeftScale       = 1.53;      // motor left sense scale  (mA=(ADC-zero)/scale)
   motorPowerIgnoreTime      = 2000;      // time to ignore motor power (ms)
-  motorZeroSettleTime       = 3000 ;     // how long (ms) to wait for motors to settle at zero speed
+  motorZeroSettleTime       = 2000;      // how long (ms) to wait for motors to settle at zero speed
   motorRollTimeMax          = 1500;      // max. roll time (ms)
   motorRollTimeMin          = 750;       //min. roll time (ms) should be smaller than motorRollTimeMax
   motorReverseTime          = 1200;      // max. reverse time (ms)
@@ -491,7 +491,7 @@ void Mower::setup()
 
   Robot::setup();  
 
-  //Necessary to prevent motor-start on at start-up or reset
+  //Necessary to prevent motor-start at start-up or reset
   delay(1000);
   digitalWrite(pinMotorEnable, HIGH);
   
@@ -554,50 +554,44 @@ void Mower::setup()
   
 } 
 
-
-void checkMotorFault(){
-  if (digitalRead(pinMotorLeftFault)==LOW){
+// check if fault signal of MC33926 module is active 
+void checkMotorFault()
+{
+  if (digitalRead(pinMotorLeftFault)==LOW)
+  {
     robot.addErrorCounter(ERR_MOTOR_LEFT);
-    //Console.println(F("Error: motor left fault"));
     robot.setNextState(STATE_ERROR, 0);
-    //digitalWrite(pinMotorEnable, LOW);
-    //digitalWrite(pinMotorEnable, HIGH);
   }
-  if  (digitalRead(pinMotorRightFault)==LOW){
+  if  (digitalRead(pinMotorRightFault)==LOW)
+  {
     robot.addErrorCounter(ERR_MOTOR_RIGHT);
-    //Console.println(F("Error: motor right fault"));
     robot.setNextState(STATE_ERROR, 0);
-    //digitalWrite(pinMotorEnable, LOW);
-    //digitalWrite(pinMotorEnable, HIGH);
   }
-  if (digitalRead(pinMotorMowFault)==LOW){  
+  if (digitalRead(pinMotorMowFault)==LOW)
+  {  
     robot.addErrorCounter(ERR_MOTOR_MOW);
-    //Console.println(F("Error: motor mow fault"));
     robot.setNextState(STATE_ERROR, 0);
-    //digitalWrite(pinMotorMowEnable, LOW);
-    //digitalWrite(pinMotorMowEnable, HIGH);
   }
 }
 
+
+// reset MC33926 fault signal
 void Mower::resetMotorFault()
 {
   if (digitalRead(pinMotorLeftFault)==LOW)
   {
     digitalWrite(pinMotorEnable, LOW);
     digitalWrite(pinMotorEnable, HIGH);
-    //Console.println(F("Reset motor left fault"));
   }
   if  (digitalRead(pinMotorRightFault)==LOW)
   {
     digitalWrite(pinMotorEnable, LOW);
     digitalWrite(pinMotorEnable, HIGH);
-    //Console.println(F("Reset motor right fault"));
   }
   if (digitalRead(pinMotorMowFault)==LOW)
   {  
     digitalWrite(pinMotorMowEnable, LOW);
     digitalWrite(pinMotorMowEnable, HIGH);
-    //Console.println(F("Reset motor mow fault"));
   }
 }
 
@@ -607,62 +601,108 @@ int Mower::readSensor(char type)
   switch (type)
   {
     // motors------------------------------------------------------------------------------------------------
-    case SEN_MOTOR_MOW: return ADCMan.read(pinMotorMowSense); break;
-    case SEN_MOTOR_RIGHT: checkMotorFault(); return ADCMan.read(pinMotorRightSense); break;
-    case SEN_MOTOR_LEFT:  checkMotorFault(); return ADCMan.read(pinMotorLeftSense); break;
+    case SEN_MOTOR_MOW:
+      return ADCMan.read(pinMotorMowSense);
+      break;
+    
+    case SEN_MOTOR_RIGHT:
+      checkMotorFault();
+      return ADCMan.read(pinMotorRightSense);
+      break;
+    
+    case SEN_MOTOR_LEFT:
+      checkMotorFault();
+      return ADCMan.read(pinMotorLeftSense);
+      break;
+    
     //case SEN_MOTOR_MOW_RPM: break; // not used - rpm is upated via interrupt
 
     // perimeter----------------------------------------------------------------------------------------------
-    case SEN_PERIM_LEFT: return perimeter.getMagnitude(0); break;
-    //case SEN_PERIM_RIGHT: return Perimeter.getMagnitude(1); break;
+    case SEN_PERIM_LEFT:
+      return perimeter.getMagnitude(0);
+      break;
+    /*
+    case SEN_PERIM_RIGHT: return Perimeter.getMagnitude(1); break;
+    */
     
     // battery------------------------------------------------------------------------------------------------
-    case SEN_BAT_VOLTAGE: ADCMan.read(pinVoltageMeasurement);  return ADCMan.read(pinBatteryVoltage); break;
-    case SEN_CHG_VOLTAGE: return ADCMan.read(pinChargeVoltage); break;
-    case SEN_CHG_CURRENT: return ADCMan.read(pinChargeCurrent); break;
+    case SEN_BAT_VOLTAGE:
+      ADCMan.read(pinVoltageMeasurement);
+      return ADCMan.read(pinBatteryVoltage);
+      break;
+    
+    case SEN_CHG_VOLTAGE:
+      return ADCMan.read(pinChargeVoltage);
+      break;
+    
+    case SEN_CHG_CURRENT:
+      return ADCMan.read(pinChargeCurrent);
+      break;
     
     // buttons------------------------------------------------------------------------------------------------
-    case SEN_BUTTON: return(digitalRead(pinButton)); break; 
+    case SEN_BUTTON: 
+      return(digitalRead(pinButton));
+      break; 
     
     //bumper----------------------------------------------------------------------------------------------------
-    case SEN_BUMPER_RIGHT: return(digitalRead(pinBumperRight)); break;
-    case SEN_BUMPER_LEFT: return(digitalRead(pinBumperLeft)); break;      
+    case SEN_BUMPER_RIGHT:
+      return(digitalRead(pinBumperRight));
+      break;
+      
+    case SEN_BUMPER_LEFT:
+      return(digitalRead(pinBumperLeft));
+      break;      
     
     //drop----------------------------------------------------------------------------------------------------
-    case SEN_DROP_RIGHT: return(digitalRead(pinDropRight)); break;                                                                                      // Dropsensor - Absturzsensor
-    case SEN_DROP_LEFT: return(digitalRead(pinDropLeft)); break;                                                                                        // Dropsensor - Absturzsensor
+    case SEN_DROP_RIGHT:
+      return(digitalRead(pinDropRight));
+      break;   
+    
+    case SEN_DROP_LEFT:
+      return(digitalRead(pinDropLeft));
+      break;
 
     // sonar---------------------------------------------------------------------------------------------------
-    //case SEN_SONAR_CENTER: return(readURM37(pinSonarCenterTrigger, pinSonarCenterEcho)); break;  
-    //case SEN_SONAR_CENTER: return(readHCSR04(pinSonarCenterTrigger, pinSonarCenterEcho)); break;
-    //case SEN_SONAR_LEFT: return(readHCSR04(pinSonarLeftTrigger, pinSonarLeftEcho)); break;
-    //case SEN_SONAR_RIGHT: return(readHCSR04(pinSonarRightTrigger, pinSonarRightEcho)); break;
+    /*
+    case SEN_SONAR_CENTER: return(readURM37(pinSonarCenterTrigger, pinSonarCenterEcho)); break;  
+    case SEN_SONAR_CENTER: return(readHCSR04(pinSonarCenterTrigger, pinSonarCenterEcho)); break;
+    case SEN_SONAR_LEFT: return(readHCSR04(pinSonarLeftTrigger, pinSonarLeftEcho)); break;
+    case SEN_SONAR_RIGHT: return(readHCSR04(pinSonarRightTrigger, pinSonarRightEcho)); break;
     
-//    #ifdef __AVR__
-//      case SEN_SONAR_CENTER: return(NewSonarCenter.ping_cm()); break;
-//      case SEN_SONAR_LEFT: return(NewSonarLeft.ping_cm()); break;
-//      case SEN_SONAR_RIGHT: return(NewSonarRight.ping_cm()); break;
-//    #endif
-    
-    //case SEN_LAWN_FRONT: return(measureLawnCapacity(pinLawnFrontSend, pinLawnFrontRecv)); break;    
-    //case SEN_LAWN_BACK: return(measureLawnCapacity(pinLawnBackSend, pinLawnBackRecv)); break;    
+    case SEN_SONAR_CENTER: return(NewSonarCenter.ping_cm()); break;
+    case SEN_SONAR_LEFT: return(NewSonarLeft.ping_cm()); break;
+    case SEN_SONAR_RIGHT: return(NewSonarRight.ping_cm()); break;
+    */
+    // lawn---------------------------------------------------------------------------------------------------
+    case SEN_LAWN_FRONT:
+      return(measureLawnCapacity(pinLawnFrontSend, pinLawnFrontRecv));
+      break;    
+      
+    case SEN_LAWN_BACK:
+      return(measureLawnCapacity(pinLawnBackSend, pinLawnBackRecv));
+      break;    
 
-//TODO: Shieldbuddy
+    //TODO: Shieldbuddy
     // rtc--------------------------------------------------------------------------------------------------------
-//    case SEN_RTC: 
-//      if (!readDS1307(datetime)) {
-//        Console.println("RTC data error!");        
-//        addErrorCounter(ERR_RTC_DATA);         
-//        setNextState(STATE_ERROR, 0);       
-//      }
-//      break;
+    case SEN_RTC: 
+      if (!readDS1307(datetime))
+      {
+        Console.println("RTC data error!");        
+        addErrorCounter(ERR_RTC_DATA);         
+        setNextState(STATE_ERROR, 0);       
+      }
+      break;
 
     // rain--------------------------------------------------------------------------------------------------------
-    case SEN_RAIN: if (digitalRead(pinRain)==LOW) return 1; break;
- 
+    case SEN_RAIN:
+      if (digitalRead(pinRain)==LOW)
+        return 1;
+      
+      break;
   }
   return 0;   
 }
+
 
 void Mower::setActuator(char type, int value)
 {

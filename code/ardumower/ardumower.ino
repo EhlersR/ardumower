@@ -54,8 +54,6 @@ void setup()
 
   // Set Arduino PWM Frequency about 1,5kHz
   useArduinoPwmFreq();
-
-
   
   // Initialise EEPROM system
   if(EEPROM.eeprom_initialise() == EEPROM_Not_Initialised)

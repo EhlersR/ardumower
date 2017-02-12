@@ -2310,12 +2310,16 @@ void Robot::readSensors()
     if (readSensor(SEN_BUMPER_LEFT) == 0)
     {
       bumperLeftCounter++;
+      motorLeftPWMCurr = 0;
+      motorRightPWMCurr = 0;
       bumperLeft=true;
     }
 
     if (readSensor(SEN_BUMPER_RIGHT) == 0)
     {
       bumperRightCounter++;
+      motorLeftPWMCurr = 0;
+      motorRightPWMCurr = 0;
       bumperRight=true;
     } 
   }
@@ -2592,7 +2596,7 @@ void Robot::setNextState(byte stateNew, byte dir)
   } 
   else if (stateNew == STATE_REVERSE)
   {
-    motorLeftSpeedRpmSet = motorRightSpeedRpmSet = -motorSpeedMaxRpm/1.25;                    
+    motorLeftSpeedRpmSet = motorRightSpeedRpmSet = -motorSpeedMaxRpm / 1.25;                    
     stateEndTime = millis() + motorReverseTime + motorZeroSettleTime;
   }   
   else if (stateNew == STATE_ROLL)
@@ -3430,6 +3434,7 @@ void Robot::loop()
 {  
   stateTime = millis() - stateStartTime;
   int steer;
+  bool beepstat;
   ADCMan.run();
   
   // Serielle Konsole
@@ -3493,10 +3498,18 @@ void Robot::loop()
       // fatal-error 
       if (millis() >= nextTimeErrorBeep)
       {
-        nextTimeErrorBeep = millis() + 5000;
-        //beep(1, true);
-      }
-      //delay(100);                        
+        nextTimeErrorBeep = millis() + 2500;
+        if (beepstat == false)
+        {
+          MyBeep(300, 2000);
+          beepstat = true;
+        }
+        else
+        {
+          MyBeep(300, 1000);
+          beepstat = false;
+        }
+      }                    
       break;
     
     case STATE_OFF:
