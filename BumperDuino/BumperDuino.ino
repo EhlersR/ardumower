@@ -6,12 +6,10 @@
   Copyright (c) 2015 by Uwe Zimprich
   Copyright (c) 2015 by Frederic Goddeeres
   Copyright (c) 2015 by Jürgen Lange
-  
-  
-  Autor: Jürgen Lange
-  Stand: 19.08.2015
-  Version: 0.04 Testversion
-  
+  Copyright (c) 2015 by Reiner Ehlers
+    
+  Autor: Jürgen Lange, changes R.Ehlers
+    
   Private-use only! (you need to ask for a commercial-use)
  
   This program is free software: you can redistribute it and/or modify
