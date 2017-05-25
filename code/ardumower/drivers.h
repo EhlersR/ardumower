@@ -47,6 +47,7 @@
 #define STEPPER_ADDRESS 0xBB
 #define DS1307_ADDRESS 104
 
+
 // ---------- date time --------------------------------------
 
 extern char *dayOfWeek[];
@@ -115,14 +116,16 @@ String date2str(date_t date);
 String versionToStr(byte v[]);
 
 // I2C helpers
+void I2C_Init();
 void I2CwriteTo(uint8_t device, uint8_t address, uint8_t val);
+void I2CwriteTo_Buf(uint8_t device, uint8_t address, int num, uint8_t buff[]);
 int I2CreadFrom(uint8_t device, uint8_t address, uint8_t num, uint8_t buff[], int retryCount = 0);
 
 // rescale to -PI..+PI
-double scalePI(double v);
+//double scalePI(double v);
 
 // computes minimum distance between x radiant (current-value) and w radiant (set-value)
-double distancePI(double x, double w);
+//double distancePI(double x, double w);
 
 // ultrasonic sensor
 unsigned int readHCSR04(int triggerPin, int echoPin);

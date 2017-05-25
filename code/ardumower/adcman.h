@@ -99,6 +99,7 @@ class ADCManager
     // get the manager running, starts sampling next pin
     void run();    
     uint8_t sampleRate;
+    boolean run_enable;
   private:
     int capturedChannels;    
     void startADC(int sampleCount);

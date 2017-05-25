@@ -33,6 +33,7 @@
 #include "adcman.h"
 #include "imu.h"
 #include "perimeter.h"
+#include "globals.h"
 
 
 RemoteControl::RemoteControl()
@@ -378,6 +379,11 @@ void RemoteControl::sendMotorMenu(boolean update)
   sendSlider("a19", F("Roll time min"), robot->motorRollTimeMin, "", 1, (robot->motorRollTimeMax - 500)); 
   sendSlider("a08", F("Reverse time"), robot->motorReverseTime, "", 1, 8000);     
   sendSlider("a09", F("Forw time max"), robot->motorForwTimeMax, "", 10, 80000);       
+
+  //Spiralfahrt
+  sendSlider("a22", F("motorSpiralStartTimeMin"), robot->motorSpiralStartTimeMin, "", 10, 80000);       
+  sendSlider("a23", F("motorSpiralFactor"), robot->motorSpiralFactor, "", 10, 100000);   
+  
   sendSlider("a12", F("Bidir speed ratio 1"), robot->motorBiDirSpeedRatio1, "", 0.01, 1.0);       
   sendSlider("a13", F("Bidir speed ratio 2"), robot->motorBiDirSpeedRatio2, "", 0.01, 1.0);       
   sendPIDSlider("a14", "RPM", robot->motorLeftPID, 0.01, 3.0);        
@@ -420,10 +426,15 @@ void RemoteControl::processMotorMenu(String pfodCmd)
   }      
   else if (pfodCmd.startsWith("a06")) processSlider_int(pfodCmd, robot->motorSpeedMaxRpm, 1);
   else if (pfodCmd.startsWith("a15")) processSlider_int(pfodCmd, robot->motorSpeedMaxPwm, 1);
-  else if (pfodCmd.startsWith("a07")) processSlider_int(pfodCmd, robot->motorRollTimeMax, 1); 
+  else if (pfodCmd.startsWith("a07")) processSlider_int(pfodCmd, robot->motorRollTimeMax, 1);
   else if (pfodCmd.startsWith("a19")) processSlider_int(pfodCmd, robot->motorRollTimeMin, 1); 
   else if (pfodCmd.startsWith("a08")) processSlider_int(pfodCmd, robot->motorReverseTime, 1);
   else if (pfodCmd.startsWith("a09")) processSlider_long(pfodCmd, robot->motorForwTimeMax, 10);
+
+  //Spiralfahrt
+  else if (pfodCmd.startsWith("a22")) processSlider_long(pfodCmd, robot->motorSpiralStartTimeMin, 10);
+  else if (pfodCmd.startsWith("a23")) processSlider_long(pfodCmd, robot->motorSpiralFactor, 10);
+  
   else if (pfodCmd.startsWith("a11")) processSlider_float(pfodCmd, robot->motorAccel, 1);    
   else if (pfodCmd.startsWith("a12")) processSlider_float(pfodCmd, robot->motorBiDirSpeedRatio1, 0.01);    
   else if (pfodCmd.startsWith("a13")) processSlider_float(pfodCmd, robot->motorBiDirSpeedRatio2, 0.01);    
@@ -458,6 +469,7 @@ void RemoteControl::sendMowMenu(boolean update)
   Serial1.print(F("|o11~current in mA "));
   Serial1.print(robot->motorMowSenseCurrent);
   sendSlider("o02", F("Power max"), robot->motorMowPowerMax, "", 0.1, 100);         
+  sendSlider("o12", F("motorMowPowerThreshold"), robot->motorMowPowerThreshold, "", 0.1, 100); 
   sendSlider("o03", F("calibrate mow motor "), robot->motorMowSenseCurrent, "", 1, 3000, 0);          
   Serial1.print(F("|o04~Speed "));
   Serial1.print(robot->motorMowPWMCurr);
@@ -486,6 +498,8 @@ void RemoteControl::sendMowMenu(boolean update)
 
 void RemoteControl::processMowMenu(String pfodCmd)
 {      
+  if (pfodCmd.startsWith("o12"))
+    processSlider_float(pfodCmd, robot->motorMowPowerThreshold, 0.1);
   if (pfodCmd.startsWith("o02"))
     processSlider_float(pfodCmd, robot->motorMowPowerMax, 0.1);
   else if (pfodCmd.startsWith("o03"))
@@ -777,21 +791,21 @@ void RemoteControl::sendImuMenu(boolean update)
   Serial1.print(F("|g00~Use "));
   sendYesNo(robot->imuUse);
   Serial1.print(F("|g01~Yaw "));
-  Serial1.print(robot->imu.ypr.yaw/PI*180);
+  Serial1.print(IMU_ypr.yaw/PI*180);
   Serial1.print(F(" deg"));
   Serial1.print(F("|g09~DriveHeading "));
   Serial1.print(robot->imuDriveHeading/PI*180);
   Serial1.print(F(" deg"));
   Serial1.print(F("|g02~Pitch "));
-  Serial1.print(robot->imu.ypr.pitch/PI*180);
+  Serial1.print(IMU_ypr.pitch/PI*180);
   Serial1.print(F(" deg"));
   Serial1.print(F("|g03~Roll "));
-  Serial1.print(robot->imu.ypr.roll/PI*180);
+  Serial1.print(IMU_ypr.roll/PI*180);
   Serial1.print(F(" deg"));
   Serial1.print(F("|g04~Correct dir "));
   sendYesNo(robot->imuCorrectDir);  
-  sendPIDSlider("g05", F("Dir"), robot->imuDirPID, 0.1, 20);
-  sendPIDSlider("g06", F("Roll"), robot->imuRollPID, 0.1, 30);    
+  sendPIDSlider("g05", F("Dir"), robot->imuDirPID, 0.001, 5);      //0.01!
+  sendPIDSlider("g06", F("Roll"), robot->imuRollPID, 0.01, 20);    //0.01!
   Serial1.print(F("|g07~Acc cal next side"));
   Serial1.print(F("|g08~Com cal start/stop"));
   Serial1.println("}");
@@ -804,13 +818,18 @@ void RemoteControl::processImuMenu(String pfodCmd)
   else if (pfodCmd == "g04")
     robot->imuCorrectDir = !robot->imuCorrectDir;
   else if (pfodCmd.startsWith("g05"))
-    processPIDSlider(pfodCmd, "g05", robot->imuDirPID, 0.1, 20);    
+    processPIDSlider(pfodCmd, "g05", robot->imuDirPID, 0.001, 5);
   else if (pfodCmd.startsWith("g06"))
-    processPIDSlider(pfodCmd, "g06", robot->imuRollPID, 0.1, 30);    
+  {
+    processPIDSlider(pfodCmd, "g06", robot->imuRollPID, 0.01, 20);    
+    //Console.println(robot->imuRollPID.Kp);
+    //Console.println(robot->imuRollPID.Ki);
+    //Console.println(robot->imuRollPID.Kd);      
+  }
   else if (pfodCmd == "g07")
-    robot->imu.calibAccNextAxis();
+    IMU_calibAccNextAxis();
   else if (pfodCmd == "g08")
-    robot->imu.calibComStartStop();
+    IMU_calibComStartStop();
   
   sendImuMenu(true);
 }
@@ -1356,7 +1375,7 @@ void RemoteControl::sendCompassMenu(boolean update)
     Serial1.println(F("{^Compass`1000"));
   
   Serial1.print(F("|cw~West|ce~East|cn~North "));
-  Serial1.print(robot->imu.ypr.yaw/PI*180);
+  Serial1.print(IMU_ypr.yaw/PI*180);
   Serial1.println(F("|cs~South|cm~Mow}"));
 }
 
@@ -1525,29 +1544,29 @@ void RemoteControl::run()
     Serial1.print(",");
     Serial1.print(robot->odometryRight);
     Serial1.print(",");
-    Serial1.print(robot->imu.ypr.yaw/PI*180);
+    Serial1.print(IMU_ypr.yaw/PI*180);
     Serial1.print(",");
-    Serial1.print(robot->imu.ypr.pitch/PI*180);
+    Serial1.print(IMU_ypr.pitch/PI*180);
     Serial1.print(",");
-    Serial1.print(robot->imu.ypr.roll/PI*180);
+    Serial1.print(IMU_ypr.roll/PI*180);
     Serial1.print(",");
-    Serial1.print(robot->imu.gyro.x/PI*180);
+    Serial1.print(IMU_gyro.x/PI*180);
     Serial1.print(",");
-    Serial1.print(robot->imu.gyro.y/PI*180);
+    Serial1.print(IMU_gyro.y/PI*180);
     Serial1.print(",");
-    Serial1.print(robot->imu.gyro.z/PI*180);
+    Serial1.print(IMU_gyro.z/PI*180);
     Serial1.print(",");
-    Serial1.print(robot->imu.acc.x);
+    Serial1.print(IMU_acc.x);
     Serial1.print(",");
-    Serial1.print(robot->imu.acc.y);
+    Serial1.print(IMU_acc.y);
     Serial1.print(",");
-    Serial1.print(robot->imu.acc.z);
+    Serial1.print(IMU_acc.z);
     Serial1.print(",");
-    Serial1.print(robot->imu.com.x);
+    Serial1.print(IMU_com.x);
     Serial1.print(",");
-    Serial1.print(robot->imu.com.y);
+    Serial1.print(IMU_com.y);
     Serial1.print(",");
-    Serial1.print(robot->imu.com.z);
+    Serial1.print(IMU_com.z);
     Serial1.print(",");
     float lat, lon;
     unsigned long age;
@@ -1600,29 +1619,29 @@ void RemoteControl::run()
       nextPlotTime = millis() + 200;
       Serial1.print((float(millis())/1000.0f));
       Serial1.print(",");
-      Serial1.print(robot->imu.ypr.yaw/PI*180);
+      Serial1.print(IMU_ypr.yaw/PI*180);
       Serial1.print(",");
-      Serial1.print(robot->imu.ypr.pitch/PI*180);
+      Serial1.print(IMU_ypr.pitch/PI*180);
       Serial1.print(",");
-      Serial1.print(robot->imu.ypr.roll/PI*180);
+      Serial1.print(IMU_ypr.roll/PI*180);
       Serial1.print(",");
-      Serial1.print(robot->imu.gyro.x/PI*180);
+      Serial1.print(IMU_gyro.x/PI*180);
       Serial1.print(",");
-      Serial1.print(robot->imu.gyro.y/PI*180);
+      Serial1.print(IMU_gyro.y/PI*180);
       Serial1.print(",");
-      Serial1.print(robot->imu.gyro.z/PI*180);
+      Serial1.print(IMU_gyro.z/PI*180);
       Serial1.print(",");
-      Serial1.print(robot->imu.acc.x);
+      Serial1.print(IMU_acc.x);
       Serial1.print(",");
-      Serial1.print(robot->imu.acc.y);
+      Serial1.print(IMU_acc.y);
       Serial1.print(",");
-      Serial1.print(robot->imu.acc.z);
+      Serial1.print(IMU_acc.z);
       Serial1.print(",");
-      Serial1.print(robot->imu.com.x);
+      Serial1.print(IMU_com.x);
       Serial1.print(",");
-      Serial1.print(robot->imu.com.y);
+      Serial1.print(IMU_com.y);
       Serial1.print(",");
-      Serial1.println(robot->imu.com.z);
+      Serial1.println(IMU_com.z);
     }
   }
   else if (pfodState == PFOD_PLOT_SENSOR_COUNTERS)

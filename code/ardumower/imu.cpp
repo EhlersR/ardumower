@@ -30,14 +30,16 @@
 #include <Wire.h>
 #include "drivers.h"
 #include "flashmem.h"
+#include "buzzer.h"
+#include "globals.h"
+#include "tone.h"
 
 // -------------I2C addresses ------------------------
-#define ADXL345B (0x53)          // ADXL345B acceleration sensor (GY-80 PCB)
-#define HMC5883L (0x1E)          // HMC5883L compass sensor (GY-80 PCB)
-#define L3G4200D (0xD2 >> 1)     // L3G4200D gyro sensor (GY-80 PCB)
+#define ADXL345B 83          // ADXL345B acceleration sensor (GY-80 PCB)
+#define HMC5883L 30          // HMC5883L compass sensor (GY-80 PCB)
+#define L3G4200D (0xD2 >> 1) // L3G4200D gyro sensor (GY-80 PCB)
 
 #define pinLED 13
-
 #define ADDR 600
 #define MAGIC 1
 
@@ -51,42 +53,8 @@ struct
   uint8_t zh;
 } gyroFifo[32];
 
-
-
-IMU::IMU()
-{
-  hardwareInitialized = false;
-  calibrationAvail = false;
-  state = IMU_RUN;
-  callCounter = 0;  
-  errorCounter = 0;
-  
-  gyroOfs.x=gyroOfs.y=gyroOfs.z=0;  
-  gyroNoise = 0;      
-  gyroCounter = 0; 
-  useGyroCalibration = false;
-  lastGyroTime = millis();
-  
-  accelCounter = 0;
-  calibAccAxisCounter = 0;
-  useAccCalibration = true; 
-  accPitch = 0;
-  accRoll = 0;
-  ypr.yaw=ypr.pitch=ypr.roll = 0;
-  
-  accMin.x=accMin.y=accMin.z = 0;
-  accMax.x=accMax.y=accMax.z = 0;  
-  accOfs.x=accOfs.y=accOfs.z = 0;
-  accScale.x=accScale.y=accScale.z = 2;  
-  com.x=com.y=com.z=0;  
-  
-  comScale.x=comScale.y=comScale.z=2;  
-  comOfs.x=comOfs.y=comOfs.z=0;    
-  useComCalibration = true;
-}
-
-// rescale to -PI..+PI
-float IMU::scalePI(float v)
+// rescale to -PI..+PI  **OK
+float IMU_scalePI(float v)
 {
   float d = v;
   while (d < 0) d+=2*PI;
@@ -99,8 +67,8 @@ float IMU::scalePI(float v)
     return d;  
 }
 
-// rescale to -180..+180
-float IMU::scale180(float v)
+// rescale to -180..+180 **OK
+float IMU_scale180(float v)
 {
   float d = v;
   while (d < 0) d+=2*180;
@@ -113,9 +81,8 @@ float IMU::scale180(float v)
     return d;  
 }
 
-
-// computes minimum distance between x radiant (current-value) and w radiant (set-value)
-float IMU::distancePI(float x, float w)
+// computes minimum distance between x radiant (current-value) and w radiant (set-value) **OK
+float IMU_distancePI(float x, float w)
 {
   // cases:   
   // w=330 degree, x=350 degree => -20 degree
@@ -123,7 +90,7 @@ float IMU::distancePI(float x, float w)
   // w=10  degree, x=350 degree =>  20 degree
   // w=0   degree, x=190 degree => 170 degree
   // w=190 degree, x=0   degree => -170 degree 
-  float d = scalePI(w - x);
+  float d = IMU_scalePI(w - x);
   if (d < -PI)
     d = d + 2*PI;
   else if (d > PI) 
@@ -132,52 +99,53 @@ float IMU::distancePI(float x, float w)
   return d;
 }
 
-float IMU::distance180(float x, float w)
-{
-  float d = scale180(w - x);
-  if (d < -180)
-    d = d + 2*180;
-  else if (d > 180)
-    d = d - 2*180;  
-  
-  return d;
-}
+//not used
+//float IMU_distance180(float x, float w)
+//{
+//  float d = IMU_scale180(w - x);
+//  if (d < -180)
+//    d = d + 2*180;
+//  else if (d > 180)
+//    d = d - 2*180;  
+//  
+//  return d;
+//}
 
-
+//not used
 // weight fusion (w=0..1) of two radiant values (a,b)
-float IMU::fusionPI(float w, float a, float b)
-{ 
-  float c;
-  if ((b >= PI/2) && (a <= -PI/2))
-  {
-    c = w * a + (1.0-w) * (b-2*PI);
-  }
-  else if ((b <= -PI/2) && (a >= PI/2))
-  {
-    c = w * (a-2*PI) + (1.0-w) * b;
-  }
-  else
-    c = w * a + (1.0-w) * b;
-  
-  return scalePI(c);
-}
+//float IMU_fusionPI(float w, float a, float b)
+//{ 
+//  float c;
+//  if ((b >= PI/2) && (a <= -PI/2))
+//  {
+//    c = w * a + (1.0-w) * (b-2*PI);
+//  }
+//  else if ((b <= -PI/2) && (a >= PI/2))
+//  {
+//    c = w * (a-2*PI) + (1.0-w) * b;
+//  }
+//  else
+//    c = w * a + (1.0-w) * b;
+//  
+//  return IMU_scalePI(c);
+//}
 
-void IMU::loadSaveCalib(boolean readflag)
+void IMU_loadSaveCalib(boolean readflag)
 {
   int addr = ADDR;
   short magic = MAGIC;
   eereadwrite(readflag, addr, magic); // magic
-  eereadwrite(readflag, addr, accOfs);
-  eereadwrite(readflag, addr, accScale);    
-  eereadwrite(readflag, addr, comOfs);
-  eereadwrite(readflag, addr, comScale);    
+  eereadwrite(readflag, addr, IMU_accOfs);
+  eereadwrite(readflag, addr, IMU_accScale);    
+  eereadwrite(readflag, addr, IMU_comOfs);
+  eereadwrite(readflag, addr, IMU_comScale);    
   
   // Daten vom RAM-Buffer ins FLASH schreiben
   if (!readflag)
     EEPROM.eeprom_update();  
 }
 
-void IMU::loadCalib()
+void IMU_loadCalib()
 {
   short magic = 0;
   int addr = ADDR;
@@ -187,28 +155,28 @@ void IMU::loadCalib()
     Console.println(F("IMU error: no calib data"));
     return;  
   }
-  calibrationAvail = true;
+  IMU_calibrationAvail = true;
   Console.println(F("IMU: found calib data"));
-  loadSaveCalib(true);
+  IMU_loadSaveCalib(true);
 }
 
-void IMU::saveCalib()
+void IMU_saveCalib()
 {
-  loadSaveCalib(false);
+  IMU_loadSaveCalib(false);
 }
 
-void IMU::deleteCalib()
+void IMU_deleteCalib()
 {
   int addr = ADDR;
   eewrite(addr, (short)0); // magic  
-  accOfs.x=accOfs.y=accOfs.z=0;
-  accScale.x=accScale.y=accScale.z=2;  
-  comOfs.x=comOfs.y=comOfs.z=0;
-  comScale.x=comScale.y=comScale.z=2;  
+  IMU_accOfs.x=IMU_accOfs.y=IMU_accOfs.z=0;
+  IMU_accScale.x=IMU_accScale.y=IMU_accScale.z=2;  
+  IMU_comOfs.x=IMU_comOfs.y=IMU_comOfs.z=0;
+  IMU_comScale.x=IMU_comScale.y=IMU_comScale.z=2;  
   Console.println("IMU calibration deleted");  
 }
 
-void IMU::printPt(point_float_t p)
+void IMU_printPt(point_float_t p)
 {
   Console.print(p.x);
   Console.print(",");    
@@ -217,81 +185,84 @@ void IMU::printPt(point_float_t p)
   Console.println(p.z);  
 }
 
-void IMU::printCalib()
+void IMU_printCalib()
 {
   Console.println(F("--------"));
   Console.print(F("accOfs="));
-  printPt(accOfs);
+  IMU_printPt(IMU_accOfs);
   Console.print(F("accScale="));
-  printPt(accScale);
+  IMU_printPt(IMU_accScale);
   Console.print(F("comOfs="));
-  printPt(comOfs);
+  IMU_printPt(IMU_comOfs);
   Console.print(F("comScale="));
-  printPt(comScale);  
+  IMU_printPt(IMU_comScale);  
   Console.println(F("--------"));
 }
 
 
-
-// calculate gyro offsets
-void IMU::calibGyro()
+// calculate gyro offsets 
+void IMU_calibGyro()
 {
-  Console.println(F("---calibGyro---"));  
-  useGyroCalibration = false;
-  gyroOfs.x = gyroOfs.y = gyroOfs.z = 0;
+  //Console.println(F("---calibGyro---"));  
+  IMU_useGyroCalibration = false;
+  IMU_gyroOfs.x = IMU_gyroOfs.y = IMU_gyroOfs.z = 0;
   point_float_t ofs;
   while(true)
   {    
     float zmin =  99999;
     float zmax = -99999;  
-    gyroNoise = 0;
+    IMU_gyroNoise = 0;
     ofs.x = ofs.y = ofs.z = 0;      
     for (int i=0; i < 50; i++)
     {
       delay(10);
-      readL3G4200D(true);      
-      zmin = min(zmin, gyro.z);
-      zmax = max(zmax, gyro.z);
-      ofs.x += ((float)gyro.x)/ 50.0;
-      ofs.y += ((float)gyro.y)/ 50.0;
-      ofs.z += ((float)gyro.z)/ 50.0;          
-      gyroNoise += sq(gyro.z-gyroOfs.z) /50.0;   // noise is computed with last offset calculation
+      IMU_readL3G4200D(true);      
+      zmin = min(zmin, IMU_gyro.z);
+      zmax = max(zmax, IMU_gyro.z);
+      ofs.x += ((float)IMU_gyro.x)/ 50.0;
+      ofs.y += ((float)IMU_gyro.y)/ 50.0;
+      ofs.z += ((float)IMU_gyro.z)/ 50.0;          
+      IMU_gyroNoise += sq(IMU_gyro.z-IMU_gyroOfs.z) /50.0;   // noise is computed with last offset calculation
     }
-    Console.print(F("gyro calib min="));
-    Console.print(zmin);
-    Console.print(F("\tmax="));    
-    Console.print(zmax);
-    Console.print(F("\tofs="));        
-    Console.print(ofs.z);    
-    Console.print(F("\tnoise="));                
-    Console.println(gyroNoise);  
-    if (gyroNoise < 20)
+//    Console.print(F("gyro calib min="));
+//    Console.print(zmin);
+//    Console.print(F("\tmax="));    
+//    Console.print(zmax);
+//    Console.print(F("\tofs="));        
+//    Console.print(ofs.z);    
+//    Console.print(F("\tnoise="));                
+//    Console.println(IMU_gyroNoise);  
+    if (IMU_gyroNoise < 20)
       break; // optimum found    
     
-    gyroOfs = ofs; // new offset found
+    IMU_gyroOfs = ofs; // new offset found
   }  
-  useGyroCalibration = true;
-  Console.print(F("counter="));
-  Console.println(gyroCounter);  
-  Console.print(F("ofs="));
-  printPt(gyroOfs);  
-  Console.println(F("------------"));  
+  IMU_useGyroCalibration = true;
+//  Console.print(F("counter="));
+//  Console.println(IMU_gyroCounter);  
+//  Console.print(F("ofs="));
+  IMU_printPt(IMU_gyroOfs);  
+//  Console.println(F("------------"));  
 }      
 
+
 // ADXL345B acceleration sensor driver
-void  IMU::initADXL345B()
+// Beschleunigungssensor
+void  IMU_initADXL345B()
 {
   I2CwriteTo(ADXL345B, 0x2D, 0);
-  I2CwriteTo(ADXL345B, 0x2D, 16);
-  I2CwriteTo(ADXL345B, 0x2D, 8);         
+  I2CwriteTo(ADXL345B, 0x2D, 16); // AUTO-Sleep
+  I2CwriteTo(ADXL345B, 0x2D, 8);  // Measure       
 }
 
-void IMU::readADXL345B()
+//Beschleunigungssensor lesen
+void IMU_readADXL345B()
 {  
   uint8_t buf[6];
   if (I2CreadFrom(ADXL345B, 0x32, 6, (uint8_t*)buf) != 6)
   {
-    errorCounter++;
+//    Console.println("Error ADXL345B");
+    IMU_errorCounter++;
     return;
   }
   // Convert the accelerometer value to G's. 
@@ -301,25 +272,39 @@ void IMU::readADXL345B()
   float x=(int16_t) (((uint16_t)buf[1]) << 8 | buf[0]); 
   float y=(int16_t) (((uint16_t)buf[3]) << 8 | buf[2]); 
   float z=(int16_t) (((uint16_t)buf[5]) << 8 | buf[4]); 
-  //Console.println(z);
-  if (useAccCalibration)
+/*
+  Console.print("buf[0]=");
+  Console.print(buf[0]);
+  Console.print(" / buf[1]=");
+  Console.print(buf[1]);
+  Console.print(" / buf[2]=");
+  Console.print(buf[2]);
+  Console.print(" / buf[3]=");
+  Console.print(buf[3]);
+  Console.print(" / buf[4]=");
+  Console.print(buf[4]);
+  Console.print(" / buf[5]=");
+  Console.println(buf[5]);
+*/
+
+  if (IMU_useAccCalibration)
   {
-    x -= accOfs.x;
-    y -= accOfs.y;
-    z -= accOfs.z;
-    x /= accScale.x*0.5;    
-    y /= accScale.y*0.5;    
-    z /= accScale.z*0.5;
-    acc.x = x;
+    x -= IMU_accOfs.x;
+    y -= IMU_accOfs.y;
+    z -= IMU_accOfs.z;
+    x /= IMU_accScale.x*0.5;    
+    y /= IMU_accScale.y*0.5;    
+    z /= IMU_accScale.z*0.5;
+    IMU_acc.x = x;
     //Console.println(z);
-    acc.y = y;
-    acc.z = z;
+    IMU_acc.y = y;
+    IMU_acc.z = z;
   }
   else
   {
-    acc.x = x;
-    acc.y = y;
-    acc.z = z;
+    IMU_acc.x = x;
+    IMU_acc.y = y;
+    IMU_acc.z = z;
   }
   /*float accXreal = x + sin(gyroYpr.pitch);
   accXmax = max(accXmax, accXreal );    
@@ -328,24 +313,38 @@ void IMU::readADXL345B()
   //Xa /= amag;
   //Ya /= amag;
   //Za /= amag;  
-  accelCounter++;
+  IMU_accelCounter++;
+
+/*
+  Console.print("AccX=");
+  Console.print(x);
+  Console.print(" / AccY=");
+  Console.print(y);
+  Console.print(" / AccZ=");
+  Console.print(z);
+*/
+
 }
 
-// L3G4200D gyro sensor driver
-boolean IMU::initL3G4200D(){
-  Console.println(F("initL3G4200D"));
+// L3G4200D gyro sensor driver                 
+// Misst Rotationsgeschwindigkeit in °/sek
+// INIT
+boolean IMU_initL3G4200D()
+{
+//  Console.println(F("initL3G4200D"));
   uint8_t buf[6];    
   int retry = 0;
   while (true)
   {
     I2CreadFrom(L3G4200D, 0x0F, 1, (uint8_t*)buf);
+    //Console.println(buf[0]);
     if (buf[0] != 0xD3)
     {        
-      Console.println(F("gyro read error"));
+//      Console.println(F("gyro read error"));
       retry++;
       if (retry > 2)
       {
-        errorCounter++;
+        IMU_errorCounter++;
         return false;
       }
       delay(1000);            
@@ -353,30 +352,30 @@ boolean IMU::initL3G4200D(){
     else
       break;
   }
-  // Normal power mode, all axes enabled, 100 Hz
-  I2CwriteTo(L3G4200D, 0x20, 0b00001100);    
-  // 2000 dps (degree per second)
-  I2CwriteTo(L3G4200D, 0x23, 0b00100000);      
+  
+  I2CwriteTo(L3G4200D, 0x20, 0b00001100);    // Normal power mode, all axes enabled, 100 Hz
+  I2CwriteTo(L3G4200D, 0x23, 0b00100000);    // 2000 dps (degree per second)
   I2CreadFrom(L3G4200D, 0x23, 1, (uint8_t*)buf);
   if (buf[0] != 0b00100000)
   {
-      Console.println(F("gyro write error")); 
+//      Console.println(F("gyro write error")); 
       while(true);
   }  
   // fifo mode 
   // I2CwriteTo(L3G4200D, 0x24, 0b01000000);        
   // I2CwriteTo(L3G4200D, 0x2e, 0b01000000);          
   delay(250);
-  calibGyro();    
+  IMU_calibGyro();    
   return true;
 }
 
-void IMU::readL3G4200D(boolean useTa)
+// Rotationsgeschwindigkeit lesen    //**OK
+void IMU_readL3G4200D(boolean useTa)
 {  
-  now = micros();
+  IMU_now = micros();
   float Ta = 1;
-  Ta = ((now - lastGyroTime) / 1000000.0);    
-  lastGyroTime = now;
+  Ta = ((IMU_now - IMU_lastGyroTime) / 1000000.0);    
+  IMU_lastGyroTime = IMU_now;
   if (Ta > 0.5)
     Ta = 0;   // should only happen for the very first call
       
@@ -394,285 +393,344 @@ void IMU::readL3G4200D(boolean useTa)
   memset(gyroFifo, 0, sizeof(gyroFifo[0])*32);
   I2CreadFrom(L3G4200D, 0xA8, sizeof(gyroFifo[0])*countOfData, (uint8_t *)gyroFifo);         // the first bit of the register address specifies we want automatic address increment
 
-  gyro.x = gyro.y = gyro.z = 0;
+  IMU_gyro.x = IMU_gyro.y = IMU_gyro.z = 0;
   //Console.print("fifo:");
   //Console.println(countOfData);
-  if (!useGyroCalibration) countOfData = 1;
+  if (!IMU_useGyroCalibration)
+    countOfData = 1;
+  
   for (uint8_t i=0; i<countOfData; i++)
   {
-      gyro.x += (int16_t) (((uint16_t)gyroFifo[i].xh) << 8 | gyroFifo[i].xl);
-      gyro.y += (int16_t) (((uint16_t)gyroFifo[i].yh) << 8 | gyroFifo[i].yl);
-      gyro.z += (int16_t) (((uint16_t)gyroFifo[i].zh) << 8 | gyroFifo[i].zl);
-      if (useGyroCalibration)
+      IMU_gyro.x += (int16_t) (((uint16_t)gyroFifo[i].xh) << 8 | gyroFifo[i].xl);
+      IMU_gyro.y += (int16_t) (((uint16_t)gyroFifo[i].yh) << 8 | gyroFifo[i].yl);
+      IMU_gyro.z += (int16_t) (((uint16_t)gyroFifo[i].zh) << 8 | gyroFifo[i].zl);
+      if (IMU_useGyroCalibration)
       {
-        gyro.x -= gyroOfs.x;
-        gyro.y -= gyroOfs.y;
-        gyro.z -= gyroOfs.z;               
+        IMU_gyro.x -= IMU_gyroOfs.x;
+        IMU_gyro.y -= IMU_gyroOfs.y;
+        IMU_gyro.z -= IMU_gyroOfs.z;               
       }
   }
-  if (useGyroCalibration)
+  if (IMU_useGyroCalibration)
   {
-    gyro.x *= 0.07 * PI/180.0;  // convert to radiant per second
-    gyro.y *= 0.07 * PI/180.0; 
-    gyro.z *= 0.07 * PI/180.0;      
+    IMU_gyro.x *= 0.07 * PI/180.0;  // convert to radiant per second
+    IMU_gyro.y *= 0.07 * PI/180.0; 
+    IMU_gyro.z *= 0.07 * PI/180.0;      
   }
-  gyroCounter++;
+  IMU_gyroCounter++;
+
+/*
+  Console.print(" / GyroX=");
+  Console.print(gyro.x);
+  Console.print(" / GyroY=");
+  Console.print(gyro.y);
+  Console.print(" / GyroZ=");
+  Console.println(gyro.z);
+*/
+  
 }
 
 
-// HMC5883L compass sensor driver
-void  IMU::initHMC5883L()
+// HMC5883L compass sensor driver  //**OK
+// Kompass
+void  IMU_initHMC5883L()
 {
   I2CwriteTo(HMC5883L, 0x00, 0x70);  // 8 samples averaged, 75Hz frequency, no artificial bias.       
-  I2CwriteTo(HMC5883L, 0x01, 0x20);   // gain
+  I2CwriteTo(HMC5883L, 0x01, 0x20);  // gain
   I2CwriteTo(HMC5883L, 0x02, 00);    // mode         
 }
 
-void IMU::readHMC5883L()
+// Kompass lesen
+void IMU_readHMC5883L()
 {    
   uint8_t buf[6];  
   if (I2CreadFrom(HMC5883L, 0x03, 6, (uint8_t*)buf) != 6)
   {
-    errorCounter++;
+    IMU_errorCounter++;
     return;
   }
   // scale +1.3Gauss..-1.3Gauss  (*0.00092)  
   float x = (int16_t) (((uint16_t)buf[0]) << 8 | buf[1]);
   float y = (int16_t) (((uint16_t)buf[4]) << 8 | buf[5]);
   float z = (int16_t) (((uint16_t)buf[2]) << 8 | buf[3]);  
-  if (useComCalibration)
+  //Console.print("Kompass x = ");
+  //Console.println(x);
+  
+  
+  if (IMU_useComCalibration)
   {
-    x -= comOfs.x;
-    y -= comOfs.y;
-    z -= comOfs.z;
-    x /= comScale.x*0.5;    
-    y /= comScale.y*0.5;    
-    z /= comScale.z*0.5;
+    x -= IMU_comOfs.x;
+    y -= IMU_comOfs.y;
+    z -= IMU_comOfs.z;
+    x /= IMU_comScale.x*0.5;    
+    y /= IMU_comScale.y*0.5;    
+    z /= IMU_comScale.z*0.5;
+
+/*    
     com.x = x;
-    //Console.println(z);
     com.y = y;
     com.z = z;
+*/
+
+    unsigned long TaC = millis() - IMU_lastCompassReadTime;    // sampling time in millis
+    IMU_lastCompassReadTime = millis();  
+
+    if (TaC > 1000)
+      TaC = 1;  
+
+    // http://phrogz.net/js/framerate-independent-low-pass-filter.html
+    // smoothed += elapsedTime * ( newValue - smoothed ) / smoothing;          
+    IMU_com.x += TaC * (x - IMU_com.x) / 100;        
+    IMU_com.y += TaC * (y - IMU_com.y) / 100;
+    IMU_com.z += TaC * (z - IMU_com.z) / 100;  
+
+/*
+    Console.print("ComX = ");
+    Console.print(IMU_com.x);
+    Console.print(" / ComY = ");
+    Console.print(IMU_com.y);
+    Console.print(" / ComZ = ");
+    Console.println(IMU_com.z);   
+*/
+    
   }
   else
   {
-    com.x = x;
-    com.y = y;
-    com.z = z;
+    IMU_com.x = x;
+    IMU_com.y = y;
+    IMU_com.z = z;
   }  
 }
 
-float IMU::sermin(float oldvalue, float newvalue)
-{
-  if (newvalue < oldvalue) 
-  {
-    Console.print(".");
-    digitalWrite(pinLED, true);
-  }
-  return min(oldvalue, newvalue);
-}
+//not used
+//float IMU_sermin(float oldvalue, float newvalue)
+//{
+//  if (newvalue < oldvalue) 
+//  {
+//    Console.print(".");
+//    digitalWrite(pinLED, true);
+//  }
+//  return min(oldvalue, newvalue);
+//}
 
-float IMU::sermax(float oldvalue, float newvalue)
-{
-  if (newvalue > oldvalue) 
-  {
-    Console.print(".");
-    digitalWrite(pinLED, true);
-  }
-  return max(oldvalue, newvalue);
-}
+//not used
+//float IMU_sermax(float oldvalue, float newvalue)
+//{
+//  if (newvalue > oldvalue) 
+//  {
+//    Console.print(".");
+//    digitalWrite(pinLED, true);
+//  }
+//  return max(oldvalue, newvalue);
+//}
 
-void IMU::calibComStartStop()
+void IMU_calibComStartStop()
 {  
-  while (Console.available()) Console.read();  
-  if (state == IMU_CAL_COM)
+  while (Console.available())
+    Console.read();  
+  
+  if (IMU_state == IMU_CAL_COM)
   {
     // stop 
     Console.println(F("com calib completed"));    
-    calibrationAvail = true;
-    float xrange = comMax.x - comMin.x;
-    float yrange = comMax.y - comMin.y;
-    float zrange = comMax.z - comMin.z;
-    comOfs.x = xrange/2 + comMin.x;
-    comOfs.y = yrange/2 + comMin.y;
-    comOfs.z = zrange/2 + comMin.z;
-    comScale.x = xrange;
-    comScale.y = yrange;  
-    comScale.z = zrange;
-    saveCalib();  
-    printCalib();
-    useComCalibration = true; 
-    state = IMU_RUN;    
-    // completed sound
+    IMU_calibrationAvail = true;
+    float xrange = IMU_comMax.x - IMU_comMin.x;
+    float yrange = IMU_comMax.y - IMU_comMin.y;
+    float zrange = IMU_comMax.z - IMU_comMin.z;
+    IMU_comOfs.x = xrange/2 + IMU_comMin.x;
+    IMU_comOfs.y = yrange/2 + IMU_comMin.y;
+    IMU_comOfs.z = zrange/2 + IMU_comMin.z;
+    IMU_comScale.x = xrange;
+    IMU_comScale.y = yrange;  
+    IMU_comScale.z = zrange;
+    IMU_saveCalib();  
+    IMU_printCalib();
+    IMU_useComCalibration = true; 
+    IMU_state = IMU_RUN;    
 
-//TODO: Shieldbuddy Anpassung
-//    tone(pinBuzzer, 600);
-//    delay(200); 
-//    tone(pinBuzzer, 880);
-//    delay(200); 
-//    tone(pinBuzzer, 1320);              
-//    delay(200); 
-//    noTone(pinBuzzer);    
-//    delay(500);
+    // completed sound
+    tone(pinBuzzer, 600);
+    delay(200); 
+    tone(pinBuzzer, 880);
+    delay(200); 
+    tone(pinBuzzer, 1320);              
+    delay(200); 
+    noTone(pinBuzzer);    
+    delay(500);
+/*  
+    MyBeep(200, 600);
+    delay(200); 
+    MyBeep(200, 880);
+    delay(200); 
+    MyBeep(200, 1320);              
+    delay(200); 
+*/
   }
   else
   {
     // start
     Console.println(F("com calib..."));
     Console.println(F("rotate sensor 360 degree around all three axis"));
-    foundNewMinMax = false;  
-    useComCalibration = false;
-    state = IMU_CAL_COM;  
-    comMin.x = comMin.y = comMin.z = 9999;
-    comMax.x = comMax.y = comMax.z = -9999;
+    IMU_foundNewMinMax = false;  
+    IMU_useComCalibration = false;
+    IMU_state = IMU_CAL_COM;  
+    IMU_comMin.x = IMU_comMin.y = IMU_comMin.z = 9999;
+    IMU_comMax.x = IMU_comMax.y = IMU_comMax.z = -9999;
   }
 }
 
-boolean IMU::newMinMaxFound()
+
+//not used
+//boolean IMU_newMinMaxFound()
+//{
+//  boolean res = IMU_foundNewMinMax;
+//  IMU_foundNewMinMax = false;
+//  return res;
+//}  
+
+void IMU_calibComUpdate()
 {
-  boolean res = foundNewMinMax;
-  foundNewMinMax = false;
-  return res;
-}  
-  
-void IMU::calibComUpdate()
-{
-  comLast = com;
+  IMU_comLast = IMU_com;
   delay(20);
-  readHMC5883L();  
+  IMU_readHMC5883L();  
   boolean newfound = false;
-  if ( (abs(com.x-comLast.x)<10) &&  (abs(com.y-comLast.y)<10) &&  (abs(com.z-comLast.z)<10) )
+  if ( (abs(IMU_com.x - IMU_comLast.x) < 10) &&  (abs(IMU_com.y - IMU_comLast.y) < 10) &&  (abs(IMU_com.z - IMU_comLast.z) < 10))
   {
-    if (com.x < comMin.x)
+    if (IMU_com.x < IMU_comMin.x)
     { 
-      comMin.x = com.x;
+      IMU_comMin.x = IMU_com.x;
       newfound = true;      
     }
-    if (com.y < comMin.y)
+    if (IMU_com.y < IMU_comMin.y)
     { 
-      comMin.y = com.y;
+      IMU_comMin.y = IMU_com.y;
       newfound = true;      
     }
-    if (com.z < comMin.z)
+    if (IMU_com.z < IMU_comMin.z)
     { 
-      comMin.z = com.z;
+      IMU_comMin.z = IMU_com.z;
       newfound = true;      
     }
-    if (com.x > comMax.x)
+    if (IMU_com.x > IMU_comMax.x)
     { 
-      comMax.x = com.x;
+      IMU_comMax.x = IMU_com.x;
       newfound = true;      
     }
-    if (com.y > comMax.y)
+    if (IMU_com.y > IMU_comMax.y)
     { 
-      comMax.y = com.y;
+      IMU_comMax.y = IMU_com.y;
       newfound = true;      
     }
-    if (com.z > comMax.z)
+    if (IMU_com.z > IMU_comMax.z)
     { 
-      comMax.z = com.z;
+      IMU_comMax.z = IMU_com.z;
       newfound = true;      
     }    
     if (newfound)
     {      
-      foundNewMinMax = true;
-
-//TODO: Shiedbuddy
-//      tone(pinBuzzer, 440);
-      Console.print("x:");
-      Console.print(comMin.x);
-      Console.print(",");
-      Console.print(comMax.x);
-      Console.print("\t  y:");
-      Console.print(comMin.y);
-      Console.print(",");
-      Console.print(comMax.y);
-      Console.print("\t  z:");
-      Console.print(comMin.z);
-      Console.print(",");
-      Console.print(comMax.z);    
-      Console.println("\t");
+      IMU_foundNewMinMax = true;   
+      //MyBeep(100, 440);
+      tone(pinBuzzer, 440);
+//      Console.print("x:");
+//      Console.print(IMU_comMin.x);
+//      Console.print(",");
+//      Console.print(IMU_comMax.x);
+//      Console.print("\t  y:");
+//      Console.print(IMU_comMin.y);
+//      Console.print(",");
+//      Console.print(IMU_comMax.y);
+//      Console.print("\t  z:");
+//      Console.print(IMU_comMin.z);
+//      Console.print(",");
+//      Console.print(IMU_comMax.z);    
+//      Console.println("\t");
     }
     else
     {
-      //TODO: Shieldbuddy
-      //noTone(pinBuzzer);
+      noTone(pinBuzzer);
     }   
   }    
 }
 
-// calculate acceleration sensor offsets
-boolean IMU::calibAccNextAxis()
-{  
-  boolean complete = false;
 
-  //TODO: Shieldbuddy
-  //tone(pinBuzzer, 440);
+// calculate acceleration sensor offsets  //**OK
+boolean IMU_calibAccNextAxis()
+{  
+  boolean complete = false; 
+  tone(pinBuzzer, 440);
   
   while (Console.available())
     Console.read();  
   
-  useAccCalibration = false;  
-  if (calibAccAxisCounter >= 6) calibAccAxisCounter = 0;
-  if (calibAccAxisCounter == 0)
+  IMU_useAccCalibration = false;  
+  if (IMU_calibAccAxisCounter >= 6) IMU_calibAccAxisCounter = 0;
+  if (IMU_calibAccAxisCounter == 0)
   {
     // restart
     Console.println(F("acc calib restart..."));
-    accMin.x = accMin.y = accMin.z = 99999;
-    accMax.x = accMax.y = accMax.z = -99999;    
+    IMU_accMin.x = IMU_accMin.y = IMU_accMin.z = 99999;
+    IMU_accMax.x = IMU_accMax.y = IMU_accMax.z = -99999;    
   }
   point_float_t pt = {0,0,0};
   for (int i=0; i < 100; i++)
   {        
-    readADXL345B();            
-    pt.x += acc.x / 100.0;
-    pt.y += acc.y / 100.0;
-    pt.z += acc.z / 100.0;                  
-    Console.print(acc.x);
+    IMU_readADXL345B();            
+    pt.x += IMU_acc.x / 100.0;
+    pt.y += IMU_acc.y / 100.0;
+    pt.z += IMU_acc.z / 100.0;                  
+    Console.print(IMU_acc.x);
     Console.print(",");
-    Console.print(acc.y);
+    Console.print(IMU_acc.y);
     Console.print(",");
-    Console.println(acc.z);
+    Console.println(IMU_acc.z);
     delay(1);
   }
-  accMin.x = min(accMin.x, pt.x);
-  accMax.x = max(accMax.x, pt.x);         
-  accMin.y = min(accMin.y, pt.y);
-  accMax.y = max(accMax.y, pt.y);         
-  accMin.z = min(accMin.z, pt.z);
-  accMax.z = max(accMax.z, pt.z);           
-  calibAccAxisCounter++;        
-  useAccCalibration = true;  
+  IMU_accMin.x = min(IMU_accMin.x, pt.x);
+  IMU_accMax.x = max(IMU_accMax.x, pt.x);         
+  IMU_accMin.y = min(IMU_accMin.y, pt.y);
+  IMU_accMax.y = max(IMU_accMax.y, pt.y);         
+  IMU_accMin.z = min(IMU_accMin.z, pt.z);
+  IMU_accMax.z = max(IMU_accMax.z, pt.z);           
+  IMU_calibAccAxisCounter++;        
+  IMU_useAccCalibration = true;  
   Console.print("side ");
-  Console.print(calibAccAxisCounter);
+  Console.print(IMU_calibAccAxisCounter);
   Console.println(" of 6 completed");    
-  if (calibAccAxisCounter == 6)
+  if (IMU_calibAccAxisCounter == 6)
   {    
     // all axis complete 
-    float xrange = accMax.x - accMin.x;
-    float yrange = accMax.y - accMin.y;
-    float zrange = accMax.z - accMin.z;
-    accOfs.x = xrange/2 + accMin.x;
-    accOfs.y = yrange/2 + accMin.y;
-    accOfs.z = zrange/2 + accMin.z;
-    accScale.x = xrange;
-    accScale.y = yrange;  
-    accScale.z = zrange;    
-    printCalib();
-    saveCalib();    
+    float xrange = IMU_accMax.x - IMU_accMin.x;
+    float yrange = IMU_accMax.y - IMU_accMin.y;
+    float zrange = IMU_accMax.z - IMU_accMin.z;
+    IMU_accOfs.x = xrange/2 + IMU_accMin.x;
+    IMU_accOfs.y = yrange/2 + IMU_accMin.y;
+    IMU_accOfs.z = zrange/2 + IMU_accMin.z;
+    IMU_accScale.x = xrange;
+    IMU_accScale.y = yrange;  
+    IMU_accScale.z = zrange;    
+    IMU_printCalib();
+    IMU_saveCalib();    
     Console.println("acc calibration completed");    
     complete = true;
 
-    //TODO: Shiedbuddy
     // completed sound
-//    tone(pinBuzzer, 600);
-//    delay(200); 
-//    tone(pinBuzzer, 880);
-//    delay(200); 
-//    tone(pinBuzzer, 1320);              
-//    delay(200); 
+/*
+    MyBeep(200, 600);
+    delay(200);
+    MyBeep(200, 880);
+    delay(200);
+    MyBeep(200, 1320);
+    delay(200);
+*/
+    tone(pinBuzzer, 600);
+    delay(200); 
+    tone(pinBuzzer, 880);
+    delay(200); 
+    tone(pinBuzzer, 1320);              
+    delay(200); 
   };
-//  noTone(pinBuzzer);
-//  delay(500);
+  noTone(pinBuzzer);
+  delay(500);
   return complete;
 }      
 
@@ -712,16 +770,17 @@ float Complementary(float newAngle, float newRate,int looptime, float angle)
 // looptime = loop time in millis()
 float Kalman(float newAngle, float newRate,int looptime, float x_angle)
 {
-  float Q_angle  =  0.01; //0.001
+  float Q_angle  =  0.02;    //0.001 Vertrauenswürdigkeit des Signals (weniger vertrauen = Zahl größer / mehr vertauen = Zahl kleiner)
   float Q_gyro   =  0.0003;  //0.003
-  float R_angle  =  0.01;  //0.03
+  
+  float R_angle  =  0.01;    //0.03  Sensorrauschen
 
   float x_bias = 0;
   float P_00 = 0, P_01 = 0, P_10 = 0, P_11 = 0;
-  float  y, S;
+  float y, S;
   float K_0, K_1;
 
-  float dt = float(looptime)/1000;
+  float dt = float(looptime) / 1000;
   x_angle += dt * (newRate - x_bias);
   P_00 +=  - dt * (P_10 + P_01) + Q_angle * dt;
   P_01 +=  - dt * P_11;
@@ -751,90 +810,137 @@ float scalePIangles(float setAngle, float currAngle)
     else return setAngle;
 }
 
-void IMU::update()
+void IMU_update()     //**OK
 {
-   read();  
-   now = millis();
-   int looptime = (now - lastAHRSTime);
-   lastAHRSTime = now;
+  IMU_read();
+  IMU_now = millis();
+  int lt = (IMU_now - IMU_lastAHRSTime);
+  IMU_lastAHRSTime = IMU_now;
+
+  IMU_Ta_sum = 0; 
+  //Ta mitteln (Versuch)
+  IMU_Ta_Array[0] = lt;
+  for (int i=99; i>0; i--)
+  {
+    IMU_Ta_Array[i] = IMU_Ta_Array[i-1];
+  }
+  for (int i=0; i < 100; i++)
+  {
+    IMU_Ta_sum += IMU_Ta_Array[i];
+  }
+  int IMU_looptime = IMU_Ta_sum / 100;
+
+
+  //Console.print("Looptime IMU-Update = ");
+  //Console.println(looptime);
+    
   
-   if (state == IMU_RUN)
-   {
-     // ------ roll, pitch --------------  
-     float forceMagnitudeApprox = abs(acc.x) + abs(acc.y) + abs(acc.z);    
-     //if (forceMagnitudeApprox < 1.2)
-     //{
-       //Console.println(forceMagnitudeApprox);      
-       accPitch   = atan2(-acc.x , sqrt(sq(acc.y) + sq(acc.z)));         
-       accRoll    = atan2(acc.y , acc.z);       
-       accPitch = scalePIangles(accPitch, ypr.pitch);
-       accRoll  = scalePIangles(accRoll, ypr.roll);
-       // complementary filter            
-       ypr.pitch = Kalman(accPitch, gyro.x, looptime, ypr.pitch);  
-       ypr.roll  = Kalman(accRoll,  gyro.y, looptime, ypr.roll);            
-     /*} else {
-       //Console.print("too much acceleration ");
-       //Console.println(forceMagnitudeApprox);
-       ypr.pitch = ypr.pitch + gyro.y * ((float)(looptime))/1000.0;
-       ypr.roll  = ypr.roll  + gyro.x * ((float)(looptime))/1000.0;
-     }*/
-     ypr.pitch=scalePI(ypr.pitch);
-     ypr.roll=scalePI(ypr.roll);
-     // ------ yaw --------------
-     // tilt-compensated yaw
-     comTilt.x =  com.x  * cos(ypr.pitch) + com.z * sin(ypr.pitch);
-     comTilt.y =  com.x  * sin(ypr.roll)         * sin(ypr.pitch) + com.y * cos(ypr.roll) - com.z * sin(ypr.roll) * cos(ypr.pitch);
-     comTilt.z = -com.x  * cos(ypr.roll)         * sin(ypr.pitch) + com.y * sin(ypr.roll) + com.z * cos(ypr.roll) * cos(ypr.pitch);     
-     comYaw = scalePI( atan2(comTilt.y, comTilt.x)  );  
-     comYaw = scalePIangles(comYaw, ypr.yaw);
-     //comYaw = atan2(com.y, com.x);  // assume pitch, roll are 0
-     // complementary filter
-     ypr.yaw = Complementary2(comYaw, -gyro.z, looptime, ypr.yaw);
-     ypr.yaw = scalePI(ypr.yaw);
-   } 
-   else if (state == IMU_CAL_COM)
-   {
-     calibComUpdate();
-   }
+  if (IMU_state == IMU_RUN)
+  {     
+    
+    // ------ roll, pitch --------------  
+    float forceMagnitudeApprox = abs(IMU_acc.x) + abs(IMU_acc.y) + abs(IMU_acc.z);    
+    //if (forceMagnitudeApprox < 1.2)
+    //{
+      //Console.println(forceMagnitudeApprox);      
+      IMU_accPitch   = atan2(-IMU_acc.x , sqrt(sq(IMU_acc.y) + sq(IMU_acc.z)));         
+/*
+      Console.print("acc.x=");
+      Console.print(IMU_acc.x);        
+      Console.print(" / acc.y=");
+      Console.print(IMU_acc.y);        
+      Console.print(" / acc.z=");
+      Console.println(IMU_acc.z);        
+*/
+      IMU_accRoll  = atan2(IMU_acc.y , IMU_acc.z);             
+      IMU_accPitch = scalePIangles(IMU_accPitch, IMU_ypr.pitch);
+      IMU_accRoll  = scalePIangles(IMU_accRoll, IMU_ypr.roll);
+      
+      // complementary filter            
+      IMU_ypr.pitch = Kalman(IMU_accPitch, IMU_gyro.x, IMU_looptime, IMU_ypr.pitch);  
+      IMU_ypr.roll  = Kalman(IMU_accRoll,  IMU_gyro.y, IMU_looptime, IMU_ypr.roll);            
+    
+    /*} else {
+      //Console.print("too much acceleration ");
+      //Console.println(forceMagnitudeApprox);
+      ypr.pitch = ypr.pitch + gyro.y * ((float)(looptime))/1000.0;
+      ypr.roll  = ypr.roll  + gyro.x * ((float)(looptime))/1000.0;
+    }*/
+    IMU_ypr.pitch=IMU_scalePI(IMU_ypr.pitch);
+    IMU_ypr.roll=IMU_scalePI(IMU_ypr.roll);
+    // ------ yaw --------------
+    // tilt-compensated yaw
+    IMU_comTilt.x =  IMU_com.x * cos(IMU_ypr.pitch) + IMU_com.z * sin(IMU_ypr.pitch);
+    IMU_comTilt.y =  IMU_com.x * sin(IMU_ypr.roll)  * sin(IMU_ypr.pitch) + IMU_com.y * cos(IMU_ypr.roll) - IMU_com.z * sin(IMU_ypr.roll) * cos(IMU_ypr.pitch);
+    IMU_comTilt.z = -IMU_com.x * cos(IMU_ypr.roll)  * sin(IMU_ypr.pitch) + IMU_com.y * sin(IMU_ypr.roll) + IMU_com.z * cos(IMU_ypr.roll) * cos(IMU_ypr.pitch);     
+    IMU_comYaw = IMU_scalePI( atan2(IMU_comTilt.y, IMU_comTilt.x));  
+    IMU_comYaw = scalePIangles(IMU_comYaw, IMU_yaw);
+    //IMU_comYaw = atan2(IMU_com.y, IMU_com.x);  // assume pitch, roll are 0
+    //complementary filter
+    IMU_yaw = Complementary2(IMU_comYaw, -IMU_gyro.z, IMU_looptime, IMU_yaw);
+    IMU_yaw = IMU_scalePI(IMU_yaw);
+
+/*
+    Console.print("yaw_roh = ");
+    Console.print(yaw/PI*180);
+*/
+    // Tiefpass
+    unsigned long TaC = millis() - IMU_lastIMUupdate;    
+    IMU_lastIMUupdate = millis();  
+    if (TaC > 1000)
+      TaC = 1;
+
+    IMU_yaw1 += TaC * (IMU_yaw - IMU_yaw1) / 1000;
+    IMU_ypr.yaw = IMU_yaw1;
+/*
+    Console.print(" / yaw = ");
+    Console.println(ypr.yaw/PI*180);  
+ */
+   
+  } 
+  else if (IMU_state == IMU_CAL_COM)
+  {
+    IMU_calibComUpdate();
+  }
 }  
 
-boolean IMU::init(int aPinBuzzer)
+boolean IMU_init()    //**OK
 {    
-  pinBuzzer = aPinBuzzer;
-  loadCalib();
-  printCalib();    
-  if (!initL3G4200D()) return false;
-  initADXL345B();
-  initHMC5883L();    
-  now = 0;  
-  hardwareInitialized = true;
+  IMU_loadCalib();
+  IMU_printCalib();    
+  if (!IMU_initL3G4200D()) return false;
+  IMU_initADXL345B();
+  IMU_initHMC5883L();    
+  IMU_now = 0;  
+  IMU_hardwareInitialized = true;
   return true;
 }
 
-int IMU::getCallCounter(){
-  int res = callCounter;
-  callCounter = 0;
+int IMU_getCallCounter()      //**OK
+{
+  int res = IMU_callCounter;
+  IMU_callCounter = 0;
   return res;
 }
 
-int IMU::getErrorCounter(){
-  int res = errorCounter;
-  errorCounter = 0;
+int IMU_getErrorCounter()     //**OK
+{
+  int res = IMU_errorCounter;
+  IMU_errorCounter = 0;
   return res;
 }
 
-void IMU::read()
+void IMU_read()               //**OK
 {  
-  if (!hardwareInitialized)
+  if (!IMU_hardwareInitialized)
   {
-    errorCounter++;
+    IMU_errorCounter++;
     return;
   }
-  callCounter++;    
-  readL3G4200D(true);
-  readADXL345B();
-  readHMC5883L();  
-  //calcComCal();
+  IMU_callCounter++;    
+  IMU_readL3G4200D(true);   //Rotationsgeschwindigkeit
+  IMU_readADXL345B();
+  IMU_readHMC5883L();  
 }
 
 

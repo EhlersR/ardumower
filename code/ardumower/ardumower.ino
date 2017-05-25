@@ -43,7 +43,9 @@ EndOfInitialised_LMURam_Variables
 #include <EEPROM.h>
 #include "config.h"
 #include "buzzer.h"
- 
+#include "robot.h"
+#include "imu.h"
+#include "tone.h"
 
 
 /***********************************/
@@ -52,24 +54,22 @@ EndOfInitialised_LMURam_Variables
 void setup()
 {
 
-  // Set Arduino PWM Frequency about 1,5kHz
-  useArduinoPwmFreq();
+  // Set Arduino PWM Frequency to 5kHz
+  useCustomPwmFreq(5000);
   
   // Initialise EEPROM system
   if(EEPROM.eeprom_initialise() == EEPROM_Not_Initialised)
   {
     // EEPROM is bad 
-    // TODO: Timeout einbauen
     while(1) { ; }
   }
- 
   robot.setup(); 
 }
 
 
 void loop()
 {
-  robot.loop();    
+  robot.loop();   
 }
 
 
@@ -89,12 +89,14 @@ EndOfInitialised_CPU1_Variables
 
 void setup1()
 {
-  Beep_begin();
+  
 }
 
 void loop1() 
 {  
-  
+  // Call ADCman if enabled by Core0
+  if (ADCMan.run_enable == true)
+    ADCMan.run();
 }
 
 
@@ -114,13 +116,17 @@ EndOfInitialised_CPU2_Variables
 
 
 void setup2()
-{
-  // put your setup code for core 2 here, to run once:
+{  
+ 
 }
 
 void loop2()
 {
-  // put your main code for core 2 here, to run repeatedly:
+  // Call IMU if enabled by Core0
+  if (IMU_update_enable == true)
+  {
+    IMU_update();
+  }   
 }
 
 

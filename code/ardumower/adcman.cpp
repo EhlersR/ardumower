@@ -34,10 +34,8 @@
 
 #define ADDR 500
 #define MAGIC 1
-
 #define CHANNELS 11
 #define MAXSAMPLECOUNT 255
-
 #define NO_CHANNEL 255
 
 volatile short position = 0;
@@ -84,13 +82,13 @@ void ADCManager::init()
   switch (sampleRate)
   {
     case SRATE_38462:
-      CreateTimerInterrupt(ContinuousTimerInterrupt, 2599, ReadADC);   //alle 25us
+      CreateTimerInterrupt0_Core1(ContinuousTimerInterrupt, 2599, ReadADC);
       break;
     case SRATE_19231:
-      CreateTimerInterrupt(ContinuousTimerInterrupt, 5198, ReadADC);   //alle 50us
+      CreateTimerInterrupt0_Core1(ContinuousTimerInterrupt, 5198, ReadADC);   //alle 50us
       break;  
     case SRATE_9615:
-      CreateTimerInterrupt(ContinuousTimerInterrupt, 10396, ReadADC);  //alle 100us  
+      CreateTimerInterrupt0_Core1(ContinuousTimerInterrupt, 10396, ReadADC);  //alle 100us  
       break;
   }
   
@@ -99,6 +97,7 @@ void ADCManager::init()
   if (loadCalib())
     printCalib();
 }
+
 
 
 // ADC ISR
@@ -315,7 +314,7 @@ int ADCManager::read(byte pin)
 }
 
 
-//Wird nicht benutzt!
+//Not used
 int ADCManager::readMedian(byte pin)
 {
   int ch = pin-A0;

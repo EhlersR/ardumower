@@ -1,0 +1,125 @@
+---------- wheel motors --------------------------------------
+motorAccel                                 : 500.00
+motorSpeedMaxRpm                           : 21
+motorSpeedMaxPwm                           : 180
+motorPowerMax                              : 20.60
+motorSenseRightScale                       : 6.56
+motorSenseLeftScale                        : 7.00
+motorPowerIgnoreTime                       : 2000
+motorZeroSettleTime                        : 1200
+motorRollTimeMax                           : 2880
+motorRollTimeMin                           : 703
+motorReverseTime                           : 2684
+motorForwTimeMax                           : 80000
+motorBiDirSpeedRatio1                      : 0.30
+motorBiDirSpeedRatio2                      : 0.92
+motorLeftPID.Kp                            : 1.04
+motorLeftPID.Ki                            : 0.07
+motorLeftPID.Kd                            : 0.00
+motorRightSwapDir                          : 0
+motorLeftSwapDir                           : 0
+---------- mower motor ---------------------------------------
+motorMowAccel                              : 1000.00
+motorMowSpeedMaxPwm                        : 227
+motorMowPowerMax                           : 100.00
+motorMowModulate                           : 0
+motorMowRPMSet                             : 0
+motorMowSenseScale                         : 2.75
+motorMowPID.Kp                             : 0.00
+motorMowPID.Ki                             : 0.00
+motorMowPID.Kd                             : 0.00
+---------- bumper --------------------------------------------
+bumperUse                                  : 1
+---------- drop ----------------------------------------------
+dropUse                                    : 0
+dropContact                                : 1
+---------- rain ----------------------------------------------
+rainUse                                    : 0
+---------- sonar ---------------------------------------------
+sonarUse                                   : 0
+sonarLeftUse                               : 1
+sonarRightUse                              : 1
+sonarCenterUse                             : 0
+sonarTriggerBelow                          : 1050
+---------- perimeter -----------------------------------------
+perimeterUse                               : 1
+perimeterTriggerTimeout                    : 0
+perimeterOutRollTimeMax                    : 2984
+perimeterOutRollTimeMin                    : 2133
+perimeterOutRevTime                        : 6346
+perimeterTrackRollTime                     : 1500
+perimeterTrackRevTime                      : 6800
+perimeterPID.Kp                            : 7.59
+perimeterPID.Ki                            : 0.00
+perimeterPID.Kd                            : 0.36
+trackingPerimeterTransitionTimeOut         : 2000
+trackingErrorTimeOut                       : 10000
+trackingBlockInnerWheelWhilePerimeterStruggling : 0
+---------- lawn sensor ---------------------------------------
+lawnSensorUse                              : 0
+---------- IMU (compass/accel/gyro) --------------------------
+imuUse                                     : 0
+imuCorrectDir                              : 1
+imuDirPID.Kp                               : 0.76
+imuDirPID.Ki                               : 0.07
+imuDirPID.Kd                               : 0.52
+imuRollPID.Kp                              : 0.84
+imuRollPID.Ki                              : 0.17
+imuRollPID.Kd                              : 0.00
+---------- model R/C -----------------------------------------
+remoteUse                                  : 1
+---------- battery -------------------------------------------
+batMonitor                                 : 1
+batGoHomeIfBelow                           : 23.70
+batSwitchOffIfBelow                        : 21.70
+batSwitchOffIfIdle                         : 1
+batFactor                                  : 0.13
+batChgFactor                               : 0.13
+batFull                                    : 29.40
+batChargingCurrentMax                      : 1.60
+batFullCurrent                             : 0.30
+startChargingIfBelow                       : 27.00
+chargingTimeout                            : 12600000
+chgSelection                               : 2
+chgSenseZero                               : 511.00
+chgFactor                                  : 39.00
+chgSense                                   : 185.00
+chgChange                                  : 0
+chgNull                                    : 2
+---------- charging station ----------------------------------
+stationRevTime                             : 1800
+stationRollTime                            : 1000
+stationForwTime                            : 1500
+stationCheckTime                           : 1700
+---------- odometry ------------------------------------------
+odometryUse                                : 1
+twoWayOdometrySensorUse                    : 0
+odometryTicksPerRevolution                 : 1060
+odometryTicksPerCm                         : 13.49
+odometryWheelBaseCm                        : 37.10
+odometryRightSwapDir                       : 0
+odometryLeftSwapDir                        : 1
+---------- GPS -----------------------------------------------
+gpsUse                                     : 0
+stuckIfGpsSpeedBelow                       : 0.20
+gpsSpeedIgnoreTime                         : 5000
+---------- other ---------------------------------------------
+buttonUse                                  : 1
+---------- user-defined switch -------------------------------
+userSwitch1                                : 0
+userSwitch2                                : 0
+userSwitch3                                : 0
+---------- timer ---------------------------------------------
+timerUse                                   : 0
+---------- bluetooth-----------------------------------------
+bluetoothuse                               : 1
+---------- esp8266 ------------------------------------------
+esp8266Use                                 : 0
+esp8266ConfigString                        : 
+---------- robot stats ---------------------------------------
+statsMowTimeMinutesTrip                    : 14
+statsMowTimeMinutesTotal                   : 76
+statsBatteryChargingCounterTotal           : 0
+statsBatteryChargingCapacityTrip in mAh    : 0.00
+statsBatteryChargingCapacityTotal in Ah    : 0.00
+statsBatteryChargingCapacityAverage in mAh : 0.00

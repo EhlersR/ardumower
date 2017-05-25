@@ -9,6 +9,7 @@
   Copyright (c) 2015 by Reiner Ehlers
     
   Autor: Jürgen Lange, changes R.Ehlers
+  Stand: 12.02.2017
     
   Private-use only! (you need to ask for a commercial-use)
  

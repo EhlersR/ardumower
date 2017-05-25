@@ -39,12 +39,13 @@
 #include "gps.h"
 #include "pfod.h"
 
+
 /*
   Generic robot class - subclass to implement concrete hardware!
 */
 
 // code version 
-#define VER "0.1-ShiBud-dev"
+#define VER "0.5-ShiBud-dev"
  
 
 // sensors
@@ -166,6 +167,8 @@ class Robot
   public:    
     String name;
     bool developerActive;
+    unsigned long imu_last_time;
+    unsigned long lastMotorControlImuRoll;
 
     // --- state machine ----
     byte stateCurr;
@@ -291,6 +294,11 @@ class Robot
     boolean rotateLeft;
     unsigned long nextTimeRotationChange;
     
+    unsigned long lastSetSpiralStartTime;
+    long motorSpiralStartTimeMin; // minimal forward time before spiral start(ms)  
+    long motorSpiralFactor; // factor for spiral width  
+    float motorMowPowerThreshold ; // motor mower power (Watt) for detection of unmown areas
+     
     // --- mower motor state ---
     // mower motor sppeed; range 0..motorMowSpeedMaxPwm
     float motorMowAccel;                // motor mower acceleration (warning: do not set too high)
@@ -338,7 +346,6 @@ class Robot
     char dropcontact;                   // contact 0-openers 1-closers
     
     // --- IMU state ---
-    IMU imu;
     char imuUse;                        // use IMU? 
     char imuCorrectDir;                 // correct direction by compass?
     PID imuDirPID;                      // direction PID controller
@@ -346,8 +353,6 @@ class Robot
     float imuDriveHeading;              // drive heading (IMU)
     float imuRollHeading;               // roll heading  (IMU)
     byte   imuRollDir;
-    //point_float_t accMin;
-    //point_float_t accMax;
     unsigned long nextTimeIMU;          // read IMU data
     unsigned long nextTimeCheckTilt;    // check if
     
@@ -517,7 +522,7 @@ class Robot
     virtual void deleteRobotStats();
     
     // other
-    //virtual void beep(int numberOfBeeps, boolean shortbeep);    
+    virtual void beep(int numberOfBeeps, boolean shortbeep);    
     virtual void printInfo(Stream &s);        
     virtual void setUserSwitches(); 
     virtual void addErrorCounter(byte errType);    
@@ -592,7 +597,7 @@ class Robot
     // Console helpers
     virtual void purgeConsole();
     virtual char waitCharConsole();
-    virtual String waitStringConsole(); //STRINGISSUE?
+    virtual String waitStringConsole(); 
 };    
 
 

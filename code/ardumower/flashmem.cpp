@@ -27,7 +27,6 @@
 
 #include "flashmem.h"
 #include "config.h"
-
 #include <EEPROM.h>
 
 FlashClass Flash;

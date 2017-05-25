@@ -53,12 +53,18 @@ void PID::reset(void)
 
 float PID::compute()
 {
-  unsigned long now = micros();
-  Ta = ((now - lastControlTime) / 1000000.0);
+  unsigned long now = millis();
+  //Ta_sum = 0;
+  Ta1 = ((now - lastControlTime) / 1000.0);
   lastControlTime = now;
-  if (Ta > 1.0)
-    Ta = 1.0;   // should only happen for the very first call
+  
+  if (Ta1 > 1.0)
+    Ta1 = 1.0;   
 
+  // Ta mitteln
+  int n = 50;
+  Ta = ((n - 1) * Ta + Ta1) / n;
+  
   // Regeldifferenz berechnen
   float e = (w - x);	
   
@@ -85,7 +91,13 @@ float PID::compute()
   y = Kp * e
       + iTerm
       + Kd/Ta * (e - eold);
-  eold = e;			
+
+  PPart = Kp * e;
+  IPart = iTerm;
+  DPart = Kd/Ta*(e-eold);
+
+  eold = e;      
+
 
   // Stellgröße auf min/max begrenzen
   // restrict output to min/max	

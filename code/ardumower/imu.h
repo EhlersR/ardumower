@@ -37,124 +37,36 @@ How to use it (example):
 #ifndef IMU_H
 #define IMU_H
 
-#include <Arduino.h>
-
-// IMU state
-enum { IMU_RUN, IMU_CAL_COM };
-
-
-struct point_int_t {
-  int16_t x;
-  int16_t y;
-  int16_t z;
-};
-typedef struct point_int_t point_int_t;
-
-struct point_long_t {
-  long x;
-  long y;
-  long z;
-};
-typedef struct point_long_t point_long_t;
-
-struct point_float_t {
-  float x;
-  float y;
-  float z;
-};
-typedef struct point_float_t point_float_t;
-
-struct ypr_t {
-  float yaw;
-  float pitch;
-  float roll;
-};
-typedef struct ypr_t ypr_t;
-
-
-class IMU
-{
-public:
-  IMU();    
-  boolean init(int aPinBuzzer);   
-  void update();  
-  int getCallCounter();
-  int getErrorCounter();
-  void deleteCalib();  
-  int callCounter;
-  int errorCounter;
-  boolean hardwareInitialized;  
-  byte state;
-  unsigned long lastAHRSTime;
-  unsigned long now;  
-  ypr_t ypr;  // gyro yaw,pitch,roll    
-  // --------- gyro state -----------------------------
-  point_float_t gyro;   // gyro sensor data (degree)    
-  point_float_t gyroOfs; // gyro calibration data
-  float gyroNoise ;      // gyro noise
-  int gyroCounter ; 
-  boolean useGyroCalibration ; // gyro calibration flag
-  unsigned long lastGyroTime;
-  // --------- acceleration state ---------------------
-  point_float_t acc;  // acceleration sensor data
-  point_float_t accGrav;  // acceleration sensor data (gravity corrected)
-  point_float_t accMin;
-  point_float_t accMax;
-  int accelCounter ;
-  boolean useAccCalibration ; 
-  float accPitch ;
-  float accRoll ;
-  point_float_t accOfs;
-  point_float_t accScale;
-  int calibAccAxisCounter;
-  // calibrate acceleration sensor  
-  boolean calibAccNextAxis();  
-  boolean calibrationAvail;
-  // --------- compass state --------------------------  
-  point_float_t com; // compass sensor data (raw)
-  point_float_t comLast;
-  point_float_t comMin; // compass sensor data (raw)
-  point_float_t comMax; // compass sensor data (raw)  
-  point_float_t comTilt; // compass sensor data (tilt corrected)
-  point_float_t comOfs;
-  point_float_t comScale;  
-  float comYaw;         // compass heading (radiant, raw)
-  boolean useComCalibration;
-  // calibrate compass sensor  
-  void calibComStartStop();  
-  void calibComUpdate();    
-  boolean newMinMaxFound();
-  // --------------------------------------------------
-  // helpers
-  float scalePI(float v);
-  float scale180(float v);
-  float distancePI(float x, float w);
-  float distance180(float x, float w);
-  float fusionPI(float w, float a, float b);    
-private:  
-  void read();
-  void loadSaveCalib(boolean readflag);  
-  void calibGyro();
-  void loadCalib();  
-  // print IMU values
-  void printPt(point_float_t p);
-  void printCalib();
-  void saveCalib();
-  float sermin(float oldvalue, float newvalue);
-  float sermax(float oldvalue, float newvalue);
-  // hardware
-  void initADXL345B();
-  boolean initL3G4200D();
-  void initHMC5883L();
-  void readL3G4200D(boolean useTa);
-  void readADXL345B();
-  void readHMC5883L();
-  boolean foundNewMinMax;
-  int pinBuzzer;
-};
-
-
-
+  #include <Arduino.h>
+  #include "globals.h"
+ 
+  boolean IMU_init(); //**OK
+  void IMU_update();  //**OK
+  int IMU_getCallCounter();  //**OK
+  int IMU_getErrorCounter();  //**OK
+  void IMU_deleteCalib();  //**OK
+  boolean IMU_calibAccNextAxis();  //**OK
+  void IMU_calibComStartStop();                             //**OK
+  void IMU_calibComUpdate();                                //**OK
+  boolean IMU_newMinMaxFound();                             //**OK
+  float IMU_scalePI(float v);                               //**OK
+  float IMU_scale180(float v);                              //**OK
+  float IMU_distancePI(float x, float w);                   //**OK
+  void IMU_read();                                          //**OK
+  void IMU_loadSaveCalib(boolean IMU_readflag);  
+  void IMU_calibGyro();
+  void IMU_loadCalib();  
+  void IMU_printPt(point_float_t p);
+  void IMU_printCalib();
+  void IMU_saveCalib();
+  float IMU_sermin(float oldvalue, float newvalue);
+  float IMU_sermax(float oldvalue, float newvalue);
+  void IMU_initADXL345B();
+  boolean IMU_initL3G4200D();
+  void IMU_initHMC5883L();
+  void IMU_readL3G4200D(boolean useTa);
+  void IMU_readADXL345B();
+  void IMU_readHMC5883L();
 
 #endif
 

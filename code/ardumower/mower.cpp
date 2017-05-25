@@ -11,7 +11,7 @@
  
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
+  the Free Software Foundation, either version 3 of the License, orF
   (at your option) any later version.
 
   This program is distributed in the hope that it will be useful,
@@ -41,6 +41,7 @@
 #include "mower.h"
 #include "drivers.h"
 #include "adcman.h"
+#include "tone.h"
 
 
  //------ pins---------------------------------------
@@ -80,7 +81,6 @@
 #define pinGreenLED 6                    // DuoLED green
 #define pinRedLED 7                      // DuoLED red
 #define pinLED 13                        // LED
-#define pinBuzzer 53                     // Buzzer
 #define pinTilt 35                       // Tilt sensor (required for TC-G158 board)
 #define pinButton 51                     // digital ON/OFF button
 #define pinBatteryVoltage A2             // battery voltage sensor
@@ -116,7 +116,7 @@
 
 // ------- baudrates---------------------------------
 #define CONSOLE_BAUDRATE    57600        // baudrate used for console
-#define BLUETOOTH_BAUDRATE  19200        // baudrate used for communication with Bluetooth module
+#define BLUETOOTH_BAUDRATE  57600        // baudrate used for communication with Bluetooth module
 #define ESP8266_BAUDRATE    115200       // baudrate used for communication with esp8266 Wifi module
 #define BLUETOOTH_PIN       1234
 
@@ -128,25 +128,25 @@ Mower::Mower()
 { 
   name = "Ardumower"; 
   // ------- wheel motors -----------------------------
-  motorAccel                = 1000;      // motor wheel acceleration - only functional when odometry is not in use (warning: do not set too low)
-  motorSpeedMaxRpm          = 25;        // motor wheel max RPM (WARNING: do not set too high, so there's still speed control when battery is low!)
-  motorSpeedMaxPwm          = 255;       // motor wheel max Pwm  (8-bit PWM=255, 10-bit PWM=1023)
-  motorPowerMax             = 75;        // motor wheel max power (Watt)
-  motorSenseRightScale      = 1.53;      // motor right sense scale (mA=(ADC-zero)/scale)
-  motorSenseLeftScale       = 1.53;      // motor left sense scale  (mA=(ADC-zero)/scale)
+  motorAccel                = 500;      // motor wheel acceleration - only functional when odometry is not in use (warning: do not set too low)
+  motorSpeedMaxRpm          = 20;        // motor wheel max RPM (WARNING: do not set too high, so there's still speed control when battery is low!)
+  motorSpeedMaxPwm          = 180;       // motor wheel max Pwm  (8-bit PWM=255, 10-bit PWM=1023)
+  motorPowerMax             = 20;        // motor wheel max power (Watt)
+  motorSenseRightScale      = 6.56;      // motor right sense scale (mA=(ADC-zero)/scale)
+  motorSenseLeftScale       = 7.0;       // motor left sense scale  (mA=(ADC-zero)/scale)
   motorPowerIgnoreTime      = 2000;      // time to ignore motor power (ms)
-  motorZeroSettleTime       = 2000;      // how long (ms) to wait for motors to settle at zero speed
-  motorRollTimeMax          = 1500;      // max. roll time (ms)
-  motorRollTimeMin          = 750;       //min. roll time (ms) should be smaller than motorRollTimeMax
-  motorReverseTime          = 1200;      // max. reverse time (ms)
+  motorZeroSettleTime       = 1200;      // how long (ms) to wait for motors to settle at zero speed
+  motorRollTimeMax          = 2800;      // max. roll time (ms)
+  motorRollTimeMin          = 700;       // min. roll time (ms) should be smaller than motorRollTimeMax
+  motorReverseTime          = 2680;      // max. reverse time (ms)
   motorForwTimeMax          = 80000;     // max. forward time (ms) / timeout
   motorBiDirSpeedRatio1     = 0.3;       // bidir mow pattern speed ratio 1
   motorBiDirSpeedRatio2     = 0.92;      // bidir mow pattern speed ratio 2
   
   // ---- normal control ---
-  motorLeftPID.Kp           = 1.5;       // motor wheel PID controller
-  motorLeftPID.Ki           = 0.29;
-  motorLeftPID.Kd           = 0.25;
+  motorLeftPID.Kp           = 1.04;       // motor wheel PID controller
+  motorLeftPID.Ki           = 0.07;
+  motorLeftPID.Kd           = 0.00;
   
   /*
   // ---- fast control ---
@@ -157,17 +157,24 @@ Mower::Mower()
   
   motorRightSwapDir         = 0;         // inverse right motor direction? 
   motorLeftSwapDir          = 0;         // inverse left motor direction?
+
+  //Spiralfahrt
+  motorSpiralStartTimeMin   = 6000;      // minimal forward time before spiral start(ms)  
+  motorSpiralFactor         = 30000;     // factor for spiral width
   
   // ------ mower motor -------------------------------
-  motorMowAccel             = 2000;      // motor mower acceleration (warning: do not set too low) 2000 seems to fit best considerating start time and power consumption 
-  motorMowSpeedMaxPwm       = 255;       // motor mower max PWM
-  motorMowPowerMax          = 75.0;      // motor mower max power (Watt)
+  motorMowAccel             = 1000;      // motor mower acceleration (warning: do not set too low) 2000 seems to fit best considerating start time and power consumption 
+  motorMowSpeedMaxPwm       = 230;       // motor mower max PWM
+  motorMowPowerMax          = 100.0;     // motor mower max power (Watt)
   motorMowModulate          = 0;         // motor mower cutter modulation?
-  motorMowRPMSet            = 3300;      // motor mower RPM (only for cutter modulation)
-  motorMowSenseScale        = 1.53;      // motor mower sense scale (mA=(ADC-zero)/scale)
-  motorMowPID.Kp            = 0.005;     // motor mower RPM PID controller
-  motorMowPID.Ki            = 0.01;
-  motorMowPID.Kd            = 0.01;
+  motorMowRPMSet            = 0;         // motor mower RPM (only for cutter modulation)
+  motorMowSenseScale        = 2.75;      // motor mower sense scale (mA=(ADC-zero)/scale)
+  motorMowPID.Kp            = 0.0;       // motor mower RPM PID controller
+  motorMowPID.Ki            = 0.0;
+  motorMowPID.Kd            = 0.0;
+
+  //Spiralfahrt
+  motorMowPowerThreshold    = 15.0;     // motor mower power (Watt) threshold to detect unmown areas
   
   //  ------ bumper -----------------------------------
   bumperUse                 = 1;         // has bumpers?
@@ -190,17 +197,17 @@ Mower::Mower()
   // ------ perimeter ---------------------------------
   perimeterUse              = 1;         // use perimeter?    
   perimeterTriggerTimeout   = 0;         // perimeter trigger timeout when escaping from inside (ms)  
-  perimeterOutRollTimeMax   = 2000;      // roll time max after perimeter out (ms)
-  perimeterOutRollTimeMin   = 750;       // roll time min after perimeter out (ms)
-  perimeterOutRevTime       = 2200;      // reverse time after perimeter out (ms)
+  perimeterOutRollTimeMax   = 3000;      // roll time max after perimeter out (ms)
+  perimeterOutRollTimeMin   = 1500;       // roll time min after perimeter out (ms)
+  perimeterOutRevTime       = 6300;      // reverse time after perimeter out (ms)
   perimeterTrackRollTime    = 1500;      // roll time during perimeter tracking
-  perimeterTrackRevTime     = 2200;      // reverse time during perimeter tracking
-  perimeterPID.Kp           = 51.0;      // perimeter PID controller
-  perimeterPID.Ki           = 12.5;
-  perimeterPID.Kd           = 0.8;  
+  perimeterTrackRevTime     = 6800;      // reverse time during perimeter tracking
+  perimeterPID.Kp           = 7.59;      // perimeter PID controller
+  perimeterPID.Ki           = 0.0;
+  perimeterPID.Kd           = 0.36;  
   trackingPerimeterTransitionTimeOut = 2000;
   trackingErrorTimeOut      = 10000;
-  trackingBlockInnerWheelWhilePerimeterStruggling = 1;
+  trackingBlockInnerWheelWhilePerimeterStruggling = 0;
   
   // ------ lawn sensor --------------------------------
   lawnSensorUse             = 0;         // use capacitive Sensor
@@ -208,11 +215,11 @@ Mower::Mower()
   // ------  IMU (compass/accel/gyro) ----------------------
   imuUse                    = 0;         // use IMU?
   imuCorrectDir             = 0;         // correct direction by compass?
-  imuDirPID.Kp              = 5.0;       // direction PID controller
-  imuDirPID.Ki              = 1.0;
-  imuDirPID.Kd              = 1.0;    
-  imuRollPID.Kp             = 0.8;       // roll PID controller
-  imuRollPID.Ki             = 21;
+  imuDirPID.Kp              = 0.76;       // direction PID controller
+  imuDirPID.Ki              = 0.07;
+  imuDirPID.Kd              = 0.52;    
+  imuRollPID.Kp             = 0.84;       // roll PID controller
+  imuRollPID.Ki             = 0.17;
   imuRollPID.Kd             = 0;  
   
   // ------ model R/C ------------------------------------
@@ -252,7 +259,7 @@ Mower::Mower()
   twoWayOdometrySensorUse    = 0;        // use optional two-wire odometry sensor?
   odometryTicksPerRevolution = 1060;     // encoder ticks per one full resolution
   odometryTicksPerCm         = 13.49;    // encoder ticks per cm
-  odometryWheelBaseCm        = 36;       // wheel-to-wheel distance (cm)
+  odometryWheelBaseCm        = 37;       // wheel-to-wheel distance (cm)
   odometryRightSwapDir       = 0;        // inverse right encoder direction?
   odometryLeftSwapDir        = 1;        // inverse left encoder direction?
   
@@ -340,10 +347,10 @@ void odoISR_left(void)
 
 void Mower::setup()
 {
- 
-  Wire.begin();            
   Console.begin(CONSOLE_BAUDRATE);
-  Console.print("SETUP");
+  Console.println("SETUP");
+  Console.println("SetWirePins & Clock");
+  I2C_Init();
 
   // keep battery switched ON
   pinMode(pinBatterySwitch, OUTPUT);
@@ -486,7 +493,11 @@ void Mower::setup()
   Console.println("");
 
   //TODO:Shieldbuddy 
-  //imu.init(pinBuzzer);
+  if (IMU_init())
+    Console.println("IMU Init erfolgreich");
+  else
+    Console.println("IMU Init fehlgeschlagen");
+        
   //gps.init();
 
   Robot::setup();  
@@ -598,6 +609,8 @@ void Mower::resetMotorFault()
  
 int Mower::readSensor(char type)
 {
+  int16_t value;
+  
   switch (type)
   {
     // motors------------------------------------------------------------------------------------------------
@@ -606,13 +619,19 @@ int Mower::readSensor(char type)
       break;
     
     case SEN_MOTOR_RIGHT:
+      
       checkMotorFault();
-      return ADCMan.read(pinMotorRightSense);
+     
+      value = ADCMan.read(pinMotorRightSense);
+      //Console.println(value);     
+      return value; //ADCMan.read(pinMotorRightSense);
       break;
     
     case SEN_MOTOR_LEFT:
       checkMotorFault();
-      return ADCMan.read(pinMotorLeftSense);
+      value = ADCMan.read(pinMotorLeftSense);
+      //Console.println(value);     
+      return value;
       break;
     
     //case SEN_MOTOR_MOW_RPM: break; // not used - rpm is upated via interrupt
@@ -724,7 +743,15 @@ void Mower::setActuator(char type, int value)
       break; 
     
     case ACT_BUZZER:
-
+      
+      if (value == 0)
+      {
+        noTone(pinBuzzer);
+      }
+      else
+      {
+        tone(pinBuzzer, value);
+      }
       break;
     
     case ACT_LED:

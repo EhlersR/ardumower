@@ -26,8 +26,11 @@
 */
 
 #include "drivers.h"
-#include <Wire.h>  
+#include <Wire.h> 
 #include <cstdarg>
+#include <SoftwareWire.h>
+
+SoftwareWire SwWire(6,7,0,0); // Pin 6/7, No Pullups, No clock stretch
 
 
 char *dayOfWeek[] = {"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
@@ -62,38 +65,12 @@ String verToString(int v)
   return String(buf);
 } 
 
-//TODO: An Shieldbuddy anpassen
+//TODO: Shieldbuddy
 int freeRam ()
 {
 //  extern int __heap_start, *__brkval; 
 //  int v; 
 //  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-}
-
-// rescale to -PI..+PI
-double scalePI(double v)
-{
-  double d = v;
-  while (d < 0) d+=2*PI;
-  while (d >= 2*PI) d-=2*PI;
-  if (d >= PI) return (-2*PI+d); 
-  else if (d < -PI) return (2*PI+d);
-  else return d;  
-}
-
-// computes minimum distance between x radiant (current-value) and w radiant (set-value)
-double distancePI(double x, double w)
-{
-  // cases:   
-  // w=330 degree, x=350 degree => -20 degree
-  // w=350 degree, x=10  degree => -20 degree
-  // w=10  degree, x=350 degree =>  20 degree
-  // w=0   degree, x=190 degree => 170 degree
-  // w=190 degree, x=0   degree => -170 degree 
-  double d = scalePI(w - x);
-  if (d < -PI) d = d + 2*PI;
-  else if (d > PI) d = d - 2*PI;  
-  return d;
 }
 
 int time2minutes(timehm_t time)
@@ -132,23 +109,32 @@ String date2str(date_t date)
 }   
             
 // ---- I2C helpers --------------------------------------------------------------
-void I2CwriteTo(uint8_t device, uint8_t address, uint8_t val)
+void I2C_Init()
 {
-   Wire.beginTransmission(device); //start transmission to device 
-   Wire.write(address);            // send register address
-   Wire.write(val);                // send value to write
-   Wire.endTransmission();         //end transmission
+  SwWire.begin();
 }
 
-void I2CwriteTo(uint8_t device, uint8_t address, int num, uint8_t buff[])
+void I2CwriteTo(uint8_t device, uint8_t address, uint8_t val)
 {
-   Wire.beginTransmission(device); //start transmission to device 
-   Wire.write(address);            // send register address
+   SwWire.beginTransmission(device);   //start transmission to device 
+   //delay(50);
+   SwWire.write(address);              // send register address
+   //delay(50);
+   SwWire.write(val);                  // send value to write
+   //delay(50);
+   SwWire.endTransmission();           //end transmission
+   //delay(50);
+}
+
+void I2CwriteTo_Buf(uint8_t device, uint8_t address, int num, uint8_t buff[])
+{
+   SwWire.beginTransmission(device); //start transmission to device 
+   SwWire.write(address);            // send register address
    for (int i=0; i < num; i++)
    {
-     Wire.write(buff[i]);          // send value to write
+     SwWire.write(buff[i]);          // send value to write
    }
-   Wire.endTransmission();         //end transmission
+   SwWire.endTransmission();         //end transmission
 }
 
 int I2CreadFrom(uint8_t device, uint8_t address, uint8_t num, uint8_t buff[], int retryCount) 
@@ -157,19 +143,18 @@ int I2CreadFrom(uint8_t device, uint8_t address, uint8_t num, uint8_t buff[], in
   for (int j=0; j < retryCount+1; j++)
   {
     i=0;
-    Wire.beginTransmission(device); //start transmission to device 
-    Wire.write(address);            //sends address to read from
-    Wire.endTransmission();         //end transmission
-  
-    Wire.requestFrom(device, num);  // request 6 bytes from device
-  
-    while(Wire.available())         //device may send less than requested (abnormal)
+    SwWire.beginTransmission(device); //start transmission to device 
+    SwWire.write(address);            //sends address to read from
+    SwWire.endTransmission();         //end transmission
+    SwWire.requestFrom(device, num);  //request 6 bytes from device
+    while(SwWire.available())         //device may send less than requested (abnormal)
     {  
-      buff[i] = Wire.read();        // receive a byte
+      buff[i] = SwWire.read();        //receive a byte
       i++;
     }
     if (num == i) return i;
-    if (j != retryCount) delay(3);
+    if (j != retryCount)
+      delay(3);
   }
   return i;
 }
@@ -334,7 +319,7 @@ boolean setDS1307(datetime_t &dt)
   buf[4] = ((dt.date.day    / 10) << 4) | (dt.date.day    % 10);
   buf[5] = ((dt.date.month  / 10) << 4) | (dt.date.month  % 10);
   buf[6] = ((dt.date.year % 100  / 10) << 4) | (dt.date.year % 10);
-  I2CwriteTo(DS1307_ADDRESS, 0x00, 7, buf);
+  I2CwriteTo_Buf(DS1307_ADDRESS, 0x00, 7, buf);
   return true;
 }
 
