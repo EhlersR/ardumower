@@ -378,7 +378,7 @@ void RemoteControl::sendMotorMenu(boolean update)
   sendSlider("a07", F("Roll time max"), robot->motorRollTimeMax, "", 1, 8000); 
   sendSlider("a19", F("Roll time min"), robot->motorRollTimeMin, "", 1, (robot->motorRollTimeMax - 500)); 
   sendSlider("a08", F("Reverse time"), robot->motorReverseTime, "", 1, 8000);     
-  sendSlider("a09", F("Forw time max"), robot->motorForwTimeMax, "", 10, 80000);       
+  sendSlider("a09", F("Forw time max"), robot->motorForwTimeMax, "", 10, 160000);       
 
   //Spiralfahrt
   sendSlider("a22", F("motorSpiralStartTimeMin"), robot->motorSpiralStartTimeMin, "", 10, 80000);       
