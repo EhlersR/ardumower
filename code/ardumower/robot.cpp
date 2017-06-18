@@ -2288,7 +2288,7 @@ void Robot::readSensors()
 
   if ((perimeterUse) && (millis() >= nextTimePerimeter))
   {    
-    nextTimePerimeter = millis() + 50;     
+    nextTimePerimeter = millis() + 50;    
     perimeterMag = readSensor(SEN_PERIM_LEFT);
     if ((perimeter.isInside(0) != perimeterInside))
     {      
@@ -2395,23 +2395,30 @@ void Robot::readSensors()
 
   if ((bumperUse) && (millis() >= nextTimeBumper))
   {    
-    nextTimeBumper = millis() + 100;               
+    nextTimeBumper = millis() + 50;               
     
-    if (readSensor(SEN_BUMPER_LEFT) == 0)
+    if (readSensor(SEN_BUMPER_LEFT) == 0 && lastBumperLeftState == false)  //Flankenauswertung!
     {
+      lastBumperLeftState = true;
       bumperLeftCounter++;
       motorLeftPWMCurr = 0;
       motorRightPWMCurr = 0;
       bumperLeft=true;
     }
+    if (readSensor(SEN_BUMPER_LEFT) == 1)
+      lastBumperLeftState = false;
 
-    if (readSensor(SEN_BUMPER_RIGHT) == 0)
+    if (readSensor(SEN_BUMPER_RIGHT) == 0 && lastBumperRightState == false)  //Flankenauswertung!
     {
+      lastBumperRightState = true;
       bumperRightCounter++;
       motorLeftPWMCurr = 0;
       motorRightPWMCurr = 0;
       bumperRight=true;
     } 
+    if (readSensor(SEN_BUMPER_RIGHT) == 1)
+      lastBumperRightState = false;
+  
   }
 
 

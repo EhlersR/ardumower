@@ -125,6 +125,13 @@ int Perimeter::getMagnitude(byte idx)
     // Process signal
     matchedFilter(idx);
   }
+
+//  Console.print("PerimeterMag: millis=");
+//  Console.print(millis());
+//  Console.print("/ mag=");
+//  Console.println(mag[idx]);
+  
+  
   return mag[idx];
 }
 

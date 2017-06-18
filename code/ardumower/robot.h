@@ -334,6 +334,8 @@ class Robot
     int bumperRightCounter;
     boolean bumperRight;
     unsigned long nextTimeBumper;
+    boolean lastBumperLeftState;
+    boolean lastBumperRightState;
     
     // --- drop state ---
     // bumper state (true = pressed)                 
