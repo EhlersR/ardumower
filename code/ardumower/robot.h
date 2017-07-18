@@ -147,6 +147,7 @@ enum
   STATE_PERI_OUT_FORW,   // outside perimeter forward driving without checkPerimeterBoundary()
   STATE_PERI_OUT_REV,    // outside perimeter reverse driving without checkPerimeterBoundary()
   STATE_PERI_OUT_ROLL,   // outside perimeter rolling driving without checkPerimeterBoundary()
+  STATE_SLOW_FORWARD,    // on bumper backside!
 };
 
 // roll types
@@ -158,6 +159,8 @@ enum { MOW_RANDOM, MOW_LANES, MOW_BIDIR };
 // console mode
 enum { CONSOLE_SENSOR_COUNTERS, CONSOLE_SENSOR_VALUES, CONSOLE_PERIMETER, CONSOLE_OFF };
 
+// bumper steps
+enum { BUMPER_LEFT_OPEN, BUMPER_LEFT_CLOSED, BUMPER_LEFT_WAIT_RELEASE, BUMPER_RIGHT_OPEN, BUMPER_RIGHT_CLOSED, BUMPER_RIGHT_WAIT_RELEASE };
 
 #define MAX_TIMERS 5
 #define BATTERY_SW_OFF -1
@@ -334,8 +337,13 @@ class Robot
     int bumperRightCounter;
     boolean bumperRight;
     unsigned long nextTimeBumper;
-    boolean lastBumperLeftState;
-    boolean lastBumperRightState;
+    //boolean lastBumperLeftState;
+    //boolean lastBumperRightState;
+    unsigned long bumperLeftTime;
+    unsigned long bumperRightTime;
+    unsigned int bumperLeftStep;
+    unsigned int bumperRightStep;
+    
     
     // --- drop state ---
     // bumper state (true = pressed)                 

@@ -98,7 +98,10 @@ Robot::Robot()
   lastTimeMotorMowStuck = 0;
 
   bumperLeftCounter = bumperRightCounter = 0;
-  bumperLeft = bumperRight = false;          
+  bumperLeft = bumperRight = false;       
+  bumperLeftTime = bumperRightTime = 0;   
+  bumperLeftStep = BUMPER_LEFT_OPEN;
+  bumperRightStep = BUMPER_RIGHT_OPEN;
    
   dropLeftCounter = dropRightCounter = 0;                                                                                              
   dropLeft = dropRight = false;                                                                                                        
@@ -2395,31 +2398,79 @@ void Robot::readSensors()
 
   if ((bumperUse) && (millis() >= nextTimeBumper))
   {    
-    nextTimeBumper = millis() + 50;               
-    
-    if (readSensor(SEN_BUMPER_LEFT) == 0 && lastBumperLeftState == false)  //Flankenauswertung!
-    {
-      lastBumperLeftState = true;
-      bumperLeftCounter++;
-      motorLeftPWMCurr = 0;
-      motorRightPWMCurr = 0;
-      bumperLeft=true;
-    }
-    if (readSensor(SEN_BUMPER_LEFT) == 1)
-      lastBumperLeftState = false;
+    nextTimeBumper = millis() + 50;          
 
-    if (readSensor(SEN_BUMPER_RIGHT) == 0 && lastBumperRightState == false)  //Flankenauswertung!
+    switch (bumperLeftStep)
     {
-      lastBumperRightState = true;
-      bumperRightCounter++;
-      motorLeftPWMCurr = 0;
-      motorRightPWMCurr = 0;
-      bumperRight=true;
-    } 
-    if (readSensor(SEN_BUMPER_RIGHT) == 1)
-      lastBumperRightState = false;
-  
+      case BUMPER_LEFT_OPEN:
+        if (readSensor(SEN_BUMPER_LEFT) == 0)
+        {
+          bumperLeftStep = BUMPER_LEFT_CLOSED;
+          bumperLeftTime = millis();
+        }
+        break;
+
+      case BUMPER_LEFT_CLOSED:
+        if (readSensor(SEN_BUMPER_LEFT) == 0)
+        {
+          if (millis() > bumperLeftTime + 400)
+          {
+            bumperLeftCounter++;
+            motorLeftPWMCurr = 0;
+            motorRightPWMCurr = 0;
+            bumperLeft=true;
+            bumperLeftStep = BUMPER_LEFT_WAIT_RELEASE;
+          }
+        }
+        else
+        {
+          bumperLeftStep = BUMPER_LEFT_OPEN;  
+        }
+        break;
+      case BUMPER_LEFT_WAIT_RELEASE:
+        if (readSensor(SEN_BUMPER_LEFT) == 1)
+        {
+          bumperLeftStep = BUMPER_LEFT_OPEN;
+        }
+        break;
+    }
+
+    switch (bumperRightStep)
+    {
+      case BUMPER_RIGHT_OPEN:
+        if (readSensor(SEN_BUMPER_RIGHT) == 0)
+        {
+          bumperRightStep = BUMPER_RIGHT_CLOSED;
+          bumperRightTime = millis();
+        }
+        break;
+
+      case BUMPER_RIGHT_CLOSED:
+        if (readSensor(SEN_BUMPER_RIGHT) == 0)
+        {
+          if (millis() > bumperRightTime + 400)
+          {
+            bumperRightCounter++;
+            motorLeftPWMCurr = 0;
+            motorRightPWMCurr = 0;
+            bumperRight=true;
+            bumperRightStep = BUMPER_RIGHT_WAIT_RELEASE;
+          }
+        }
+        else
+        {
+          bumperRightStep = BUMPER_RIGHT_OPEN;  
+        }
+        break;
+      case BUMPER_RIGHT_WAIT_RELEASE:
+        if (readSensor(SEN_BUMPER_RIGHT) == 1)
+        {
+          bumperRightStep = BUMPER_RIGHT_OPEN;
+        }
+        break;
+    }   
   }
+
 
 
   if ((dropUse) && (millis() >= nextTimeDrop))
@@ -2711,7 +2762,12 @@ void Robot::setNextState(byte stateNew, byte dir)
     motorLeftSpeedRpmSet = motorRightSpeedRpmSet = -motorSpeedMaxRpm / 1.25;                    
     stateEndTime = millis() + motorReverseTime + motorZeroSettleTime;
   }   
-  
+
+  else if (stateNew == STATE_SLOW_FORWARD)
+  {
+    motorLeftSpeedRpmSet = motorRightSpeedRpmSet = motorSpeedMaxRpm / 1.25;                    
+    stateEndTime = millis() + motorReverseTime + motorZeroSettleTime;    
+  }
   
   else if (stateNew == STATE_ROLL)
   {                  
@@ -3135,17 +3191,20 @@ void Robot::checkBumpers()
   if ((mowPatternCurr == MOW_BIDIR) && (millis() < stateStartTime + 4000))
     return;
 
-  if ((bumperLeft || bumperRight))
+  //Bumper front
+  if (bumperLeft)
   {    
-    if (bumperLeft)
-    {
-      reverseOrBidir(RIGHT);          
-    }
-    else
-    {
-      reverseOrBidir(LEFT);
-    }    
+    if (stateCurr == STATE_FORWARD)
+      reverseOrBidir(LEFT);  
   }  
+
+  //Bumper back
+  if (bumperRight)
+  {
+    if (stateCurr = STATE_REVERSE)
+      setNextState(STATE_SLOW_FORWARD, 0);
+  }
+  
 }
 
 // check drop                                                                                                                       
@@ -3714,6 +3773,44 @@ void Robot::loop()
       checkPerimeterBoundary(); 
       checkLawn();      
       checkTimeout();      
+      break;
+
+    case STATE_SLOW_FORWARD:
+
+      // driving reverse
+      checkErrorCounter();    
+      checkTimer();
+      checkCurrent();            
+      checkBumpers();
+      checkDrop();                                                                                                                                      
+      checkPerimeterBoundary();      
+      checkLawn();    
+        
+      if (mowPatternCurr == MOW_BIDIR)            //UNTESTED!!!
+      {
+        double ratio = motorBiDirSpeedRatio1;
+        if (stateTime > 4000)
+          ratio = motorBiDirSpeedRatio2;
+        if (rollDir == RIGHT)
+          motorRightSpeedRpmSet = ((double)motorLeftSpeedRpmSet) * ratio;
+        else 
+          motorLeftSpeedRpmSet = ((double)motorRightSpeedRpmSet) * ratio;                                
+        if (stateTime > motorForwTimeMax)
+        { 
+          // timeout 
+          if (rollDir == RIGHT)
+            setNextState(STATE_FORWARD, LEFT); // toggle roll dir
+          else
+            setNextState(STATE_FORWARD, RIGHT);
+        }        
+      } 
+      else
+      {        
+        if (millis() >= stateEndTime)
+        {
+          setNextState(STATE_ROLL, rollDir);                                 
+        }
+      }
       break;
       
     case STATE_ROLL:
